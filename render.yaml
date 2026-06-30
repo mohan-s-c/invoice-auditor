@@ -1,0 +1,24 @@
+# Render Blueprint — Invoice Auditor backend (FastAPI + SQLite, offline-first).
+# Render runs the long-lived Python web service; Netlify serves the UI and proxies /api to it.
+# Deploy: Render dashboard → New → Blueprint → pick this repo → it reads this file.
+services:
+  - type: web
+    name: invoice-auditor-api
+    runtime: python
+    plan: free
+    region: oregon
+    branch: feat/invoice-auditor-build
+    buildCommand: pip install -e .
+    startCommand: uvicorn services.dashboard_api.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12"
+      # GUARDRAIL: keep AI fully local/offline — no external model egress in the hosted demo.
+      - key: LLM_PROVIDER
+        value: offline
+      - key: ALLOW_EXTERNAL_MODEL
+        value: "false"
+      # SQLite self-seeds on first boot (lifespan → seed_all). The free plan's disk is
+      # ephemeral, so dispositions reset on redeploy — fine for a demo. For durable state,
+      # attach a Render disk mounted at /data and set DB_PATH=/data/invoice_auditor.db.

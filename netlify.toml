@@ -1,0 +1,24 @@
+# Netlify — serves the Invoice Auditor UI shell and proxies the API to the Render backend.
+# There is no build step: the UI is a single self-contained index.html (Chart.js via CDN).
+#
+# SETUP: after the Render backend is live, replace the host below with its URL
+# (e.g. https://invoice-auditor-api.onrender.com), then redeploy.
+# The /api/* rewrite is a same-origin proxy (status 200), so the frontend's relative
+# `/api` calls work unchanged and no CORS config is needed.
+
+[build]
+  publish = "services/dashboard_api/static"
+  command = ""
+
+# Proxy all API traffic to the Render backend.
+[[redirects]]
+  from = "/api/*"
+  to = "https://invoice-auditor-api.onrender.com/api/:splat"
+  status = 200
+  force = true
+
+# SPA-style fallback: serve the UI shell for any non-API path.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
