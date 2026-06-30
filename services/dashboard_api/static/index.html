@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Invoice Auditor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --navy:#16264A; --navy-2:#1F3864; --primary:#2E6CB5; --primary-700:#1F4E86;
+  --bg:#F4F6FA; --surface:#FFFFFF; --surface-2:#F8FAFC; --border:#E4E9F0; --border-strong:#CDD6E2;
+  --text:#1B2533; --muted:#64718A; --faint:#94A0B3;
+  --success:#1E7E5A; --success-bg:#E6F4EE; --warning:#B7791F; --warning-bg:#FBF1DE;
+  --danger:#B3261E; --danger-bg:#FAE9E8; --info:#2E6CB5; --info-bg:#E7F0FA;
+  --radius:10px; --radius-lg:14px; --shadow:0 1px 2px rgba(16,32,64,.06),0 2px 8px rgba(16,32,64,.05);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+.app{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+.side{background:var(--navy);color:#C9D4E8;display:flex;flex-direction:column;padding:18px 14px;position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 8px 18px;color:#fff}
+.brand .logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#2E6CB5,#5FA0E0);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff}
+.brand b{font-size:15px;font-weight:600;letter-spacing:.2px}
+.brand small{display:block;color:#8FA3C4;font-weight:400;font-size:11px}
+.nav{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+.nav a{display:flex;align-items:center;gap:10px;color:#C9D4E8;text-decoration:none;padding:9px 12px;border-radius:8px;font-size:13.5px;cursor:pointer}
+.nav a .ic{width:18px;height:18px;opacity:.85}
+.nav a:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav a.active{background:var(--primary);color:#fff}
+.nav .tag{margin-left:auto;font-size:10px;background:rgba(255,255,255,.14);padding:2px 6px;border-radius:6px;color:#dbe6f7}
+.side .foot{margin-top:auto;font-size:11px;color:#7E92B4;padding:10px 8px;border-top:1px solid rgba(255,255,255,.08)}
+.main{display:flex;flex-direction:column;min-width:0}
+.top{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:5}
+.top h1{font-size:18px;font-weight:600;margin:0}
+.top .sub{color:var(--muted);font-size:12.5px}
+.search{margin-left:auto;display:flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:7px 11px;color:var(--muted);width:240px}
+.search input{border:0;background:transparent;outline:0;font:inherit;color:var(--text);width:100%}
+.role{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:9px;padding:5px 10px;font-size:12.5px}
+.role select{border:0;background:transparent;font:inherit;color:var(--text);outline:0;cursor:pointer}
+.avatar{width:30px;height:30px;border-radius:50%;background:var(--navy-2);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px}
+.bell{position:relative;width:34px;height:34px;border:1px solid var(--border);border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer}
+.bell .dot{position:absolute;top:6px;right:7px;width:8px;height:8px;background:var(--danger);border-radius:50%;border:2px solid #fff}
+.content{padding:24px 28px 48px;max-width:1240px;width:100%}
+.screen{display:none}.screen.active{display:block}
+.row{display:flex;gap:16px;flex-wrap:wrap}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow)}
+.card .hd{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.card .hd h3{margin:0;font-size:14px;font-weight:600}
+.card .hd .mut{color:var(--muted);font-size:12px;font-weight:400}
+.card .bd{padding:16px 18px}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:18px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;box-shadow:var(--shadow)}
+.kpi .l{color:var(--muted);font-size:12px;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.kpi .v{font-size:24px;font-weight:700;letter-spacing:-.3px}
+.kpi .d{font-size:11.5px;margin-top:4px}
+.up{color:var(--success)} .down{color:var(--danger)}
+.grid2{display:grid;grid-template-columns:1.4fr 1fr;gap:16px}
+.grid2b{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--muted);font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;padding:9px 10px;border-bottom:1px solid var(--border)}
+td{padding:11px 10px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:0}
+tbody tr.clk{cursor:pointer}
+tbody tr.clk:hover{background:var(--surface-2)}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11.5px;font-weight:500;white-space:nowrap}
+.p-red{background:var(--danger-bg);color:var(--danger)} .p-amb{background:var(--warning-bg);color:var(--warning)}
+.p-grn{background:var(--success-bg);color:var(--success)} .p-blu{background:var(--info-bg);color:var(--info)}
+.p-gry{background:#EEF1F6;color:#5C6B82}
+.btn{border:1px solid var(--border-strong);background:var(--surface);color:var(--text);padding:8px 14px;border-radius:9px;font:inherit;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}.btn.primary:hover{background:var(--primary-700)}
+.btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn.ghost{border-color:transparent}
+.btn.small{padding:5px 10px;font-size:12px}
+.muted{color:var(--muted)} .small{font-size:12px}
+.sevbar{width:4px;height:34px;border-radius:3px;display:inline-block;vertical-align:middle}
+.filters{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.sel{border:1px solid var(--border);background:var(--surface);border-radius:9px;padding:8px 11px;font:inherit;font-size:13px;color:var(--text)}
+.bar{height:8px;border-radius:5px;background:#EAEEF6;overflow:hidden}
+h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:26px 0 10px}
+.note{background:var(--info-bg);border:1px solid #CFE0F4;color:#1F4E86;border-radius:10px;padding:11px 14px;font-size:12.5px;display:flex;gap:9px;align-items:flex-start}
+.gate{background:var(--warning-bg);border:1px solid #EAD9B0;color:#8A5A12;border-radius:10px;padding:11px 14px;font-size:12.5px}
+.tl{list-style:none;margin:0;padding:0}
+.tl li{display:flex;gap:11px;padding:8px 0;border-bottom:1px dashed var(--border);font-size:12.5px}
+.tl li:last-child{border-bottom:0}
+.tl .tdot{width:9px;height:9px;border-radius:50%;margin-top:5px;flex:none}
+.opp{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.bignum{font-size:22px;font-weight:700}
+.empty{padding:30px;text-align:center;color:var(--muted)}
+.skel{background:linear-gradient(90deg,#eef1f6,#f7f9fc,#eef1f6);border-radius:8px;height:14px;animation:sh 1.1s infinite}
+@keyframes sh{0%{opacity:.6}50%{opacity:1}100%{opacity:.6}}
+#toast{position:fixed;bottom:20px;right:20px;background:var(--text);color:#fff;padding:11px 15px;border-radius:10px;opacity:0;transition:opacity .2s;z-index:50}
+@media(max-width:1080px){.kpis{grid-template-columns:repeat(2,1fr)}.grid2,.grid2b,.opp{grid-template-columns:1fr}.app{grid-template-columns:64px 1fr}.brand b,.brand small,.nav a span,.nav .tag,.side .foot{display:none}.nav a{justify-content:center}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><div class="logo">IA</div><div><b>Invoice Auditor</b><small>Value Creation &amp; Ops</small></div></div>
+    <nav class="nav" id="nav">
+      <a data-s="dash" class="active"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg><span>Dashboard</span></a>
+      <a data-s="queue"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h12"/></svg><span>Flagged queue</span><span class="tag" id="navQueue"></span></a>
+      <a data-s="detail"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span>Invoice detail</span></a>
+      <a data-s="proc"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg><span>Procurement opt.</span><span class="tag">soon</span></a>
+      <a data-s="vendors"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/></svg><span>Vendors &amp; contracts</span></a>
+      <a data-s="notifs"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg><span>Notifications</span><span class="tag" id="navNotifs"></span></a>
+      <a data-s="settings"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 2h-5l-.3 2.6a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7 7 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 1.7 1L9.5 22h5l.3-2.6a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.6a7 7 0 0 0 .1-1z"/></svg><span>Settings</span></a>
+      <a data-s="ds"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg><span>Design system</span></a>
+    </nav>
+    <div class="foot">Awayday · v0.1 · local Qwen<br/>Humans own money decisions.</div>
+  </aside>
+
+  <div class="main">
+    <header class="top">
+      <div><h1 id="ttl">Cross-brand dashboard</h1><div class="sub" id="sub">All brands</div></div>
+      <div class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input placeholder="Search invoices, vendors…" aria-label="Search"/></div>
+      <div class="bell" aria-label="Notifications"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg><span class="dot"></span></div>
+      <div class="role"><div class="avatar" id="avatar">KD</div><select id="role" aria-label="Switch role / scope"></select></div>
+    </header>
+    <div class="content">
+      <section class="screen active" id="dash"></section>
+      <section class="screen" id="queue"></section>
+      <section class="screen" id="detail"></section>
+      <section class="screen" id="proc"></section>
+      <section class="screen" id="vendors"></section>
+      <section class="screen" id="notifs"></section>
+      <section class="screen" id="settings"></section>
+      <section class="screen" id="ds"></section>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+<script>
+const $=s=>document.querySelector(s);
+const api=async(p,o)=>{const r=await fetch(p,o);if(!r.ok)throw new Error((await r.text())||r.status);return r.json();};
+const post=(p,b)=>api(p,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b||{})});
+const esc=s=>(s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const usd=v=>'$'+Number(v||0).toLocaleString();
+const usdk=v=>'$'+(Number(v||0)/1000).toFixed(1)+'k';
+function toast(m){const t=$('#toast');t.textContent=m;t.style.opacity=1;setTimeout(()=>t.style.opacity=0,2600);}
+const SEVPILL={critical:'p-red',high:'p-amb',medium:'p-blu'};
+const SEVCOL={critical:'#B3261E',high:'#B7791F',medium:'#2E6CB5'};
+const linePill=f=>!f?'<span class="pill p-grn">in range</span>':(/duplicate/i.test(f)?`<span class="pill p-amb">${esc(f)}</span>`:(/\+/.test(f)?`<span class="pill p-red">${esc(f)}</span>`:`<span class="pill p-amb">${esc(f)}</span>`));
+let CURRENT="dash", charts={}, DETAIL_ID=null;
+
+const TITLES={dash:['Cross-brand dashboard',''],queue:['Flagged queue',''],detail:['Invoice detail',''],proc:['Procurement optimization','Future · Phase 3'],vendors:['Vendors & contracts','On- vs off-contract spend'],notifs:['Notifications','Routed to you & regional presidents'],settings:['Settings','Autonomy, routing & guardrails'],ds:['Design system','Tokens & components']};
+
+function nav(s){CURRENT=s;
+  document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active',a.dataset.s===s));
+  document.querySelectorAll('.screen').forEach(x=>x.classList.toggle('active',x.id===s));
+  $('#ttl').textContent=TITLES[s][0]; $('#sub').textContent=SUBS[s]!==undefined?SUBS[s]:TITLES[s][1];
+  render(s); window.scrollTo(0,0);
+}
+let SUBS={};
+document.addEventListener('click',e=>{
+  const n=e.target.closest('[data-s]'); if(n){nav(n.dataset.s);return;}
+  const g=e.target.closest('[data-go]'); if(g){openInvoice(g.dataset.go);}
+});
+
+async function boot(){
+  const me=await api('/api/me');
+  const sel=$('#role'); sel.innerHTML=me.roles.map(r=>`<option value="${r.id}">${esc(r.name)} · ${esc(r.scope)}</option>`).join('');
+  sel.value=me.role.id; $('#avatar').textContent=me.role.initials;
+  sel.onchange=async()=>{const r=await post('/api/role',{role:sel.value});$('#avatar').textContent=r.role.initials;await refreshCounts();render(CURRENT);};
+  await refreshCounts(); render('dash');
+}
+async function refreshCounts(){
+  try{const d=await api('/api/dashboard');$('#navQueue').textContent=d.kpis.flagged;
+    const n=await api('/api/notifications');$('#navNotifs').textContent=n.unread;}catch(e){}
+}
+function render(s){({dash:renderDash,queue:renderQueue,detail:renderDetail,proc:renderProc,vendors:renderVendors,notifs:renderNotifs,settings:renderSettings,ds:renderDS}[s]||(()=>{}))();}
+
+async function renderDash(){
+  const el=$('#dash'); el.innerHTML='<div class="kpis">'+Array(5).fill('<div class="kpi"><div class="skel" style="width:60%"></div><div class="skel" style="height:24px;margin-top:8px"></div></div>').join('')+'</div>';
+  const d=await api('/api/dashboard'); SUBS.dash=d.scope;$('#sub').textContent=d.scope;
+  const k=d.kpis;
+  el.innerHTML=`<div class="kpis">
+    <div class="kpi"><div class="l">Invoices filed</div><div class="v">${k.filed.toLocaleString()}</div><div class="d muted">${esc(d.scope)}</div></div>
+    <div class="kpi"><div class="l">Flagged</div><div class="v" style="color:var(--warning)">${k.flagged}</div><div class="d muted">open</div></div>
+    <div class="kpi"><div class="l">$ at risk</div><div class="v">${usdk(k.at_risk)}</div><div class="d muted">pending review</div></div>
+    <div class="kpi"><div class="l">Auto-cleared</div><div class="v" style="color:var(--success)">${k.auto_cleared_pct}%</div><div class="d up">clean invoices</div></div>
+    <div class="kpi"><div class="l">Recoverable identified</div><div class="v">${usdk(k.recoverable)}</div><div class="d muted">across open flags</div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><div class="hd"><h3>Spend by category</h3></div><div class="bd"><div style="height:248px"><canvas id="catChart"></canvas></div></div></div>
+    <div class="card"><div class="hd"><h3>Anomalies by type</h3></div><div class="bd"><div style="height:248px"><canvas id="anomChart"></canvas></div></div></div>
+  </div>
+  <div class="grid2" style="margin-top:16px">
+    <div class="card"><div class="hd"><h3>Recent flags</h3><span class="mut">routed to you &amp; the regional president</span><a class="btn ghost small" style="margin-left:auto" data-s="queue">View all →</a></div>
+      <div class="bd" style="padding:0"><table><thead><tr><th></th><th>Vendor</th><th>Brand</th><th>Category</th><th>Amount</th><th>Anomaly</th><th>Conf.</th></tr></thead>
+      <tbody>${d.recent_flags.length?d.recent_flags.map(f=>flagRow(f,true)).join(''):'<tr><td colspan="7" class="empty">No open flags — all invoices cleared.</td></tr>'}</tbody></table></div></div>
+    <div class="card"><div class="hd"><h3>Spend by region</h3></div><div class="bd">${d.regions.map(regBar).join('')||'<div class="empty">No spend in scope.</div>'}</div></div>
+  </div>`;
+  drawCharts(d);
+}
+function flagRow(f,mini){return `<tr class="clk" data-go="${f.invoice_id}"><td><span class="sevbar" style="background:${SEVCOL[f.severity]}"></span></td>
+  <td><b>${esc(f.vendor)}</b></td><td>${esc(f.brand)}</td><td>${esc(f.category)}</td><td>${usd(f.amount)}</td>
+  <td><span class="pill ${SEVPILL[f.severity]}">${esc(f.anomaly_type)}</span></td><td>${f.confidence.toFixed(2)}</td>${mini?'':`<td class="muted">${esc(f.recommended_action)}</td><td><span class="pill p-gry">${esc(f.status)}</span></td>`}</tr>`;}
+function regBar(r){const max=Math.max(r.brands,1);return `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span>${esc(r.region)}</span><span class="muted">${usdk(r.spend)} · ${r.brands} brands</span></div><div class="bar"><div style="height:100%;width:${Math.min(100,r.brands/max*100)}%;background:var(--primary)"></div></div></div>`;}
+function drawCharts(d){
+  if(typeof Chart==='undefined')return;
+  Object.values(charts).forEach(c=>c&&c.destroy()); charts={};
+  charts.cat=new Chart($('#catChart'),{type:'bar',data:{labels:d.category_spend.map(c=>c.category),datasets:[{data:d.category_spend.map(c=>Math.round(c.amount)),backgroundColor:'#2E6CB5',borderRadius:5}]},options:{plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'$'+v},grid:{color:'#EEF1F6'}},x:{grid:{display:false}}}}});
+  const pal=['#B7791F','#B3261E','#2E6CB5','#1E7E5A','#7A5AA6','#9AA6B8'];
+  charts.anom=new Chart($('#anomChart'),{type:'doughnut',data:{labels:d.anomalies.map(a=>a.type),datasets:[{data:d.anomalies.map(a=>a.count),backgroundColor:pal}]},options:{plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}}},cutout:'62%'}});
+}
+
+async function renderQueue(){
+  const el=$('#queue'); el.innerHTML='<div class="empty">Loading…</div>';
+  const d=await api('/api/flags');
+  el.innerHTML=`<div class="filters"><div style="margin-left:auto" class="muted small">${d.count} flagged · ${usdk(d.at_risk)} at risk</div></div>
+  <div class="card"><div class="bd" style="padding:0"><table><thead><tr><th></th><th>Vendor</th><th>Brand · region</th><th>Category</th><th>Amount</th><th>Anomaly</th><th>Conf.</th><th>Recommended</th><th>Status</th></tr></thead>
+  <tbody>${d.flags.length?d.flags.map(f=>`<tr class="clk" data-go="${f.invoice_id}"><td><span class="sevbar" style="background:${SEVCOL[f.severity]}"></span></td><td><b>${esc(f.vendor)}</b></td><td>${esc(f.brand)} · ${esc(f.region)}</td><td>${esc(f.category)}</td><td>${usd(f.amount)}</td><td><span class="pill ${SEVPILL[f.severity]}">${esc(f.anomaly_type)}</span></td><td>${f.confidence.toFixed(2)}</td><td class="muted">${esc(f.recommended_action)}</td><td><span class="pill p-gry">${esc(f.status)}</span></td></tr>`).join(''):'<tr><td colspan="9" class="empty">No open flags in your scope — all invoices cleared.</td></tr>'}</tbody></table></div></div>`;
+}
+
+async function openInvoice(id){DETAIL_ID=id;nav('detail');}
+async function renderDetail(){
+  const el=$('#detail');
+  if(!DETAIL_ID){el.innerHTML='<div class="empty">Select a flag from the dashboard or queue to view its invoice.</div>';return;}
+  el.innerHTML='<div class="empty">Loading…</div>';
+  let d; try{d=await api('/api/invoices/'+DETAIL_ID);}catch(e){el.innerHTML='<div class="empty">'+esc(e.message)+'</div>';return;}
+  const inv=d.invoice, f=d.flag, a=d.agent;
+  SUBS.detail=`${inv.id} · ${inv.brand}`;$('#sub').textContent=SUBS.detail;
+  const sev=f?f.severity:'medium';
+  const lines=d.lines.map(l=>`<tr><td>${esc(l.item)}</td><td>${l.qty}</td><td>${usd(l.unit_price)}</td><td>${usd(l.amount)}</td><td>${linePill(l.flag)}</td></tr>`).join('');
+  const why=f?(a.rationale.map(r=>`<div>• ${esc(r)}</div>`).join('')):'<div class="muted">No anomalies — cleared.</div>';
+  const agentCard=a?`<div class="card" style="border-color:#CFE0F4"><div class="hd" style="background:var(--info-bg);border-radius:14px 14px 0 0"><h3 style="color:#1F4E86">Auditor agent recommendation</h3></div><div class="bd">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span class="pill ${SEVPILL[sev]}">${esc(a.action)}</span><span class="muted small">confidence ${a.confidence.toFixed(2)} · autonomy ${esc(a.autonomy)} · ${esc(a.model_version)}</span></div>
+      <p class="small" style="margin:0 0 12px">${esc(a.recommendation)}</p>
+      <div class="gate">Human approval required — money decision. The agent recommends a hold; AP executes.</div>
+      <div class="row" style="margin-top:14px;gap:8px">
+        <button class="btn primary" onclick="disp('approve')">Approve</button>
+        <button class="btn danger" onclick="disp('reject')">Reject lines</button>
+        <button class="btn" onclick="disp('hold')">Place hold</button>
+        <button class="btn" onclick="disp('escalate')">Escalate</button>
+      </div></div></div>`:'<div class="card"><div class="bd"><span class="pill p-grn">Cleared</span> <span class="muted small">no anomalies detected</span></div></div>';
+  el.innerHTML=`<div class="row" style="align-items:stretch">
+    <div style="flex:1.5;min-width:340px" class="card"><div class="hd"><h3>Invoice ${esc(inv.id)}</h3>${f?`<span class="pill ${SEVPILL[sev]}" style="margin-left:8px">${esc(sev)} severity</span>`:''}<span class="mut" style="margin-left:auto">${esc(inv.status)}</span></div>
+      <div class="bd"><div class="row" style="gap:28px;margin-bottom:14px">
+        <div><div class="muted small">Vendor</div><div style="font-weight:600">${esc(inv.vendor)}</div></div>
+        <div><div class="muted small">Brand · region</div><div style="font-weight:600">${esc(inv.brand)} · ${esc(inv.region)}</div></div>
+        <div><div class="muted small">Amount</div><div style="font-weight:600">${usd(inv.amount)}</div></div>
+        <div><div class="muted small">Category</div><div style="font-weight:600">${esc(inv.category)}</div></div></div>
+        <table><thead><tr><th>Line item</th><th>Qty</th><th>Unit price</th><th>Amount</th><th></th></tr></thead><tbody>${lines}</tbody></table></div></div>
+    <div style="flex:1;min-width:300px;display:flex;flex-direction:column;gap:16px">
+      <div class="card"><div class="hd"><h3>Why it was flagged</h3></div><div class="bd"><div class="small" style="display:flex;flex-direction:column;gap:8px">${why}</div></div></div>
+      ${agentCard}
+    </div></div>
+  <div class="card" style="margin-top:16px"><div class="hd"><h3>Audit trail</h3><span class="mut">every action logged · with model version</span></div><div class="bd">
+    <ul class="tl">${d.audit.length?d.audit.map(e=>`<li><span class="tdot" style="background:${e.actor==='agent'?'var(--info)':e.actor==='human'?'var(--navy-2)':'var(--faint)'}"></span><div><b>${esc(e.actor_id||e.actor)}</b> ${esc(e.action)} <span class="muted">· ${esc((e.ts||'').slice(0,16).replace('T',' '))}${e.model_version?' · '+esc(e.model_version):''}</span></div></li>`).join(''):'<li class="muted">No events yet.</li>'}</ul></div></div>`;
+}
+async function disp(action){
+  try{const r=await post('/api/invoices/'+DETAIL_ID+'/disposition',{action});
+    toast(action==='approve'?'Approved':action==='reject'?'Lines rejected':action==='hold'?'Hold placed':'Escalated');
+    await refreshCounts(); renderDetail();
+  }catch(e){toast('Error: '+e.message);}
+}
+
+async function renderVendors(){
+  const el=$('#vendors'); el.innerHTML='<div class="empty">Loading…</div>';
+  const d=await api('/api/vendors');
+  const cp={off:'<span class="pill p-red">Off-contract</span>',regional:'<span class="pill p-amb">Regional</span>',hq:'<span class="pill p-grn">HQ national</span>'};
+  el.innerHTML=`<div class="filters"><div style="margin-left:auto" class="muted small">${d.vendors.length} vendors · ${d.off_contract_pct}% off-contract</div></div>
+  <div class="card"><div class="bd" style="padding:0"><table><thead><tr><th>Vendor</th><th>Category</th><th>Region</th><th>Spend (YTD)</th><th>Contract</th><th>Avg vs benchmark</th></tr></thead><tbody>
+  ${d.vendors.map(v=>`<tr><td><b>${esc(v.name)}</b></td><td>${esc(v.category)}</td><td class="muted">${esc(v.region||'—')}</td><td>${usdk(v.spend_ytd)}</td><td>${cp[v.contract]||v.contract}</td><td class="${v.vs_benchmark>0?'down':'up'}">${v.vs_benchmark>0?'+':''}${Math.round(v.vs_benchmark*100)}%</td></tr>`).join('')}
+  </tbody></table></div></div>
+  <div class="note" style="margin-top:14px"><span>i</span><div>Off-contract and rate-variance flags are computed against the vendor master and HQ rate cards (mock until the AP-tool feed is confirmed).</div></div>`;
+}
+
+async function renderNotifs(){
+  const el=$('#notifs'); el.innerHTML='<div class="empty">Loading…</div>';
+  const d=await api('/api/notifications');
+  el.innerHTML=`<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:6px"><div class="muted small">${d.unread} open · routed to Kyle (HQ) and the responsible regional president</div><button class="btn ghost small">Mark all read</button></div>
+  <div class="card"><div class="bd" style="padding:6px 0"><ul class="tl" style="padding:0 10px">
+  ${d.items.length?d.items.map(n=>`<li><span class="tdot" style="background:${SEVCOL[n.severity]}"></span><div style="flex:1"><b>${esc(n.severity)} · ${esc(n.anomaly_type)}</b> — ${esc(n.vendor)} ${usd(n.amount)} (${esc(n.brand)}). <span class="muted">${n.recoverable?usd(n.recoverable)+' recoverable.':esc(n.recommended_action)+'.'}</span><div class="muted small">${esc(n.route)}</div></div><button class="btn small" data-go="${n.invoice_id}">View</button></li>`).join(''):'<li class="empty">No open notifications — you\'re all caught up.</li>'}
+  </ul></div></div>`;
+}
+
+async function renderSettings(){
+  const el=$('#settings'); el.innerHTML='<div class="empty">Loading…</div>';
+  const d=await api('/api/autonomy');
+  const lvlPill=l=>l.startsWith('L3')?'p-grn':l.startsWith('L2')?'p-blu':'p-gry';
+  const stPill={on:'<span class="pill p-grn">● On</span>',promoting:'<span class="pill p-amb">◐ Promoting</span>',learning:'<span class="pill p-gry">○ Learning</span>'};
+  el.innerHTML=`<div class="card"><div class="hd"><h3>Autonomy by anomaly type</h3><span class="mut">auto-act unlocks at sustained precision ≥ 0.95 (low-value, reversible)</span></div><div class="bd" style="padding:0">
+  <table><thead><tr><th>Anomaly type</th><th>Level</th><th>Precision (30d)</th><th>Auto-action ≤</th><th>Status</th></tr></thead><tbody>
+  ${d.autonomy.map(a=>`<tr><td>${esc(a.type)}</td><td><span class="pill ${lvlPill(a.level)}">${esc(a.level)}</span></td><td>${a.precision.toFixed(2)}</td><td>${a.auto_max?usd(a.auto_max):'—'}</td><td>${stPill[a.status]||a.status}</td></tr>`).join('')}
+  </tbody></table></div></div>
+  <div class="grid2b" style="margin-top:16px">
+    <div class="card"><div class="hd"><h3>Notification routing</h3></div><div class="bd small">${d.routing.map(r=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)"><span>${esc(r.severity)}</span><span class="muted">${esc(r.rule)}</span></div>`).join('')}</div></div>
+    <div class="card"><div class="hd"><h3>Guardrails</h3><span class="mut">policy</span></div><div class="bd small">${d.guardrails.map(g=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)"><span>${esc(g.policy)}</span><span>${esc(g.value)}</span></div>`).join('')}</div></div>
+  </div>
+  <div class="gate" style="margin-top:14px">Promotion to auto-act is gated by sustained precision and is reversible — any anomaly type can be rolled back to recommend-only with one click.</div>`;
+}
+
+async function renderProc(){
+  const el=$('#proc'); el.innerHTML='<div class="empty">Loading…</div>';
+  const d=await api('/api/procurement');
+  el.innerHTML=`<div class="note" style="margin-bottom:16px"><span>★</span><div>Future capability (Phase 3). Opportunities below are illustrative — generated from category spend + supplier market research.</div></div>
+  <div class="opp">${d.opportunities.map(o=>`<div class="card"><div class="bd"><div class="muted small">${esc(o.title)}</div><div class="bignum" style="margin:6px 0">${usdk(o.amount)}</div><div class="small muted">${esc(o.note)}</div><div style="margin-top:10px"><span class="pill p-blu">${esc(o.tag)}</span></div></div></div>`).join('')}</div>
+  <div class="card" style="margin-top:16px"><div class="hd"><h3>Supplier benchmark — HVAC service (Mountain West)</h3></div><div class="bd" style="padding:0"><table><thead><tr><th>Supplier</th><th>Avg unit cost</th><th>Used by</th><th>On contract</th><th>vs HQ rate</th></tr></thead><tbody>
+  ${d.benchmark.map(b=>`<tr><td>${esc(b.supplier)}</td><td>${usd(b.unit)}</td><td>${esc(b.used_by)}</td><td>${b.on_contract==='Yes'?'<span class="pill p-grn">Yes</span>':b.on_contract==='Regional'?'<span class="pill p-amb">Regional</span>':'<span class="pill p-red">No</span>'}</td><td class="${b.vs_hq.startsWith('+')?'down':'up'}">${esc(b.vs_hq)}</td></tr>`).join('')}
+  </tbody></table></div></div>`;
+}
+
+function renderDS(){
+  $('#ds').innerHTML=`<h2 class="sec">Color — semantic</h2><div class="row">
+    <div class="card" style="flex:1"><div class="bd" style="background:var(--navy);color:#fff;border-radius:14px">Navy / brand</div></div>
+    <div class="card" style="flex:1"><div class="bd" style="background:var(--primary);color:#fff;border-radius:14px">Primary</div></div>
+    <div class="card" style="flex:1"><div class="bd" style="background:var(--success);color:#fff;border-radius:14px">Success / clear</div></div>
+    <div class="card" style="flex:1"><div class="bd" style="background:var(--warning);color:#fff;border-radius:14px">Warning / flag</div></div>
+    <div class="card" style="flex:1"><div class="bd" style="background:var(--danger);color:#fff;border-radius:14px">Danger / reject</div></div></div>
+  <h2 class="sec">Status pills</h2><div class="row" style="gap:10px"><span class="pill p-red">Critical</span><span class="pill p-amb">High</span><span class="pill p-blu">Medium</span><span class="pill p-grn">Cleared</span><span class="pill p-gry">Learning</span></div>
+  <h2 class="sec">Buttons</h2><div class="row" style="gap:10px"><button class="btn primary">Primary</button><button class="btn">Secondary</button><button class="btn danger">Danger</button><button class="btn ghost">Ghost</button></div>
+  <h2 class="sec">Principles</h2><div class="card"><div class="bd small">Flat surfaces, hairline borders · semantic color encodes meaning (clear / flag / reject) · humans own money decisions — destructive actions always carry an approval gate · all AI local · everything auditable with model version.</div></div>`;
+}
+boot();
+</script>
+</body>
+</html>
