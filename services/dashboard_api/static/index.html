@@ -295,11 +295,23 @@ async function renderVendors(){
 
 async function renderNotifs(){
   const el=$('#notifs'); el.innerHTML='<div class="empty">Loading…</div>';
-  const d=await api('/api/notifications');
+  const [d,ob,me]=await Promise.all([api('/api/notifications'),api('/api/notify/outbox'),api('/api/me')]);
+  const isHQ=me.role&&me.role.region===null;
+  const chan={offline:'queued (offline)',graph:'Microsoft 365',smtp:'SMTP'}[ob.provider]||ob.provider;
+  const stPill=s=>s==='sent'?'<span class="pill p-grn">sent</span>':s==='queued'?'<span class="pill p-amb">queued</span>':'<span class="pill p-red">failed</span>';
   el.innerHTML=`<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:6px"><div class="muted small">${d.unread} open · routed to Kyle (HQ) and the responsible regional president</div><button class="btn ghost small">Mark all read</button></div>
   <div class="card"><div class="bd" style="padding:6px 0"><ul class="tl" style="padding:0 10px">
   ${d.items.length?d.items.map(n=>`<li><span class="tdot" style="background:${SEVCOL[n.severity]}"></span><div style="flex:1"><b>${esc(n.severity)} · ${esc(n.anomaly_type)}</b> — ${esc(n.vendor)} ${usd(n.amount)} (${esc(n.brand)}). <span class="muted">${n.recoverable?usd(n.recoverable)+' recoverable.':esc(n.recommended_action)+'.'}</span><div class="muted small">${esc(n.route)}</div></div><button class="btn small" data-go="${n.invoice_id}">View</button></li>`).join(''):'<li class="empty">No open notifications — you\'re all caught up.</li>'}
-  </ul></div></div>`;
+  </ul></div></div>
+  <div class="row" style="justify-content:space-between;align-items:center;margin:18px 0 6px"><h2 class="sec" style="margin:0">Email notifications — outbox</h2><div class="muted small">channel: ${esc(chan)} · ${ob.sent} sent · ${ob.queued} queued${isHQ?' · <button class="btn small" onclick="runDispatch()">Run dispatch</button>':''}</div></div>
+  <div class="card"><div class="bd" style="padding:0"><table><thead><tr><th>Recipient</th><th>Severity</th><th>Anomaly</th><th>Subject</th><th>Why</th><th>Status</th></tr></thead><tbody>
+  ${ob.items.length?ob.items.map(o=>`<tr><td><b>${esc(o.recipient_name)}</b> <span class="muted small">${esc(o.kind)} · ${esc(o.recipient_email)}</span></td><td><span class="pill ${SEVPILL[o.severity]}">${esc(o.severity)}</span></td><td>${esc(o.anomaly_type)}</td><td class="muted small">${esc(o.subject)}</td><td class="muted small">${esc(o.reason)}</td><td>${stPill(o.status)}</td></tr>`).join(''):'<tr><td colspan="6" class="empty">No notifications routed yet.</td></tr>'}
+  </tbody></table></div></div>
+  <div class="note" style="margin-top:12px"><span>i</span><div>Notifications fire when a flag is high/critical severity or clears its category dollar threshold, routed to the region's president (critical also copies the Ops head). <b>${ob.external_email_enabled?'External email is ENABLED.':'Offline mode — messages are queued, not sent.'}</b> Swap to Microsoft 365 or SMTP via env config.</div></div>`;
+}
+async function runDispatch(){
+  try{const r=await post('/api/notify/dispatch');toast(`Dispatch: ${r.sent} sent · ${r.queued} queued · ${r.skipped_below_threshold} below threshold`);renderNotifs();}
+  catch(e){toast('Error: '+e.message);}
 }
 
 async function renderSettings(){

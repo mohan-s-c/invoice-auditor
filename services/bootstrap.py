@@ -80,6 +80,11 @@ def seed_all() -> dict[str, int]:
         record(AuditEvent("agent", "auditor", "flag.routed", inv.id,
                           after={"to": f"Kyle + RP {inv.region}"}, model_version=mv))
 
+    # Route notifications for flags that clear the policy (offline → queued to the outbox).
+    from services.notify.dispatch import dispatch_notifications
+    notify = dispatch_notifications()
+
     return {"invoices": len(invoices), "flags": n_flags, "vendors": len(vendors),
             "model_version_n": 1, "auto_act_types": sum(
-                1 for a in autonomy.table() if a["level"].startswith("L3"))}
+                1 for a in autonomy.table() if a["level"].startswith("L3")),
+            "notifications": notify["queued"] + notify["sent"]}

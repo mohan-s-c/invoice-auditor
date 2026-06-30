@@ -20,6 +20,7 @@ from libs.modelserve.provider import get_provider
 from services import bootstrap
 from services.agent import autonomy
 from services.learning.capture import label_stats, record_disposition
+from services.notify import dispatch as notify_dispatch
 from services.training import registry, trainer
 
 _STATIC = Path(__file__).resolve().parent / "static"
@@ -267,6 +268,26 @@ def procurement():
 @app.get("/api/audit")
 def audit(limit: int = 60):
     return {"events": trail(limit=limit)}
+
+
+# --- email notifications: threshold-based routing to RP / Ops (next phase) ------------------
+@app.get("/api/notify/outbox")
+def notify_outbox():
+    """Notifications routed for the current scope (RP sees only their region)."""
+    items = notify_dispatch.outbox(region=_scope())
+    return {"items": items, "count": len(items),
+            "queued": sum(1 for i in items if i["status"] == "queued"),
+            "sent": sum(1 for i in items if i["status"] == "sent"),
+            "provider": settings.notify_provider,
+            "external_email_enabled": settings.allow_external_email}
+
+
+@app.post("/api/notify/dispatch")
+def notify_run(force: bool = False):
+    """Evaluate open flags against the policy and send/queue notifications. Controller-only."""
+    if rbac.current_role()["region"] is not None:
+        raise HTTPException(403, "only HQ can run a notification dispatch")
+    return notify_dispatch.dispatch_notifications(force=force)
 
 
 # --- self-learning: model registry + fine-tune loop (Phase 2) ---------------

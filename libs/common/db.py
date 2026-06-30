@@ -53,10 +53,17 @@ CREATE TABLE IF NOT EXISTS model_versions (       -- self-learning model registr
     status TEXT,             -- 'candidate' | 'champion' | 'retired'
     precision_overall REAL, metrics TEXT, labels_used INTEGER, created_ts TEXT
 );
+CREATE TABLE IF NOT EXISTS notifications_outbox (  -- email notifications (queued or sent)
+    id INTEGER PRIMARY KEY AUTOINCREMENT, flag_id TEXT, invoice_id TEXT, region TEXT,
+    recipient_name TEXT, recipient_email TEXT, kind TEXT,   -- 'to' | 'cc'
+    subject TEXT, body TEXT, severity TEXT, anomaly_type TEXT, reason TEXT,
+    provider TEXT, status TEXT,                             -- 'queued' | 'sent' | 'failed'
+    ts TEXT
+);
 """
 
 _TABLES = ("vendors", "contracts", "invoices", "invoice_lines", "flags",
-           "dispositions", "audit", "model_versions")
+           "dispositions", "audit", "model_versions", "notifications_outbox")
 
 
 def connect() -> sqlite3.Connection:

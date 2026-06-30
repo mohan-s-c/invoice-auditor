@@ -19,9 +19,29 @@ class Settings(BaseSettings):
     allow_external_model: bool = False
 
     # AP / invoicing tool (separate from TRACK).
-    ap_mode: str = "mock"  # mock | api
+    ap_mode: str = "mock"  # mock | api | ramp
     ap_base_url: str = ""
     ap_api_key: str = ""
+
+    # Ramp ingestion (real pull requires OAuth client-credentials + egress; guarded).
+    ramp_base_url: str = "https://api.ramp.com"
+    ramp_client_id: str = ""
+    ramp_client_secret: str = ""
+
+    # Email notifications. "offline" = queue to the outbox, never send (default, safe).
+    # GUARDRAIL: a real provider only sends when allow_external_email is explicitly true.
+    notify_provider: str = "offline"   # offline | graph | smtp
+    allow_external_email: bool = False
+    notify_from: str = "invoice-auditor@awayday.example"
+    # Microsoft Graph (M365) — client-credentials.
+    graph_tenant_id: str = ""
+    graph_client_id: str = ""
+    graph_client_secret: str = ""
+    # SMTP (Google Workspace / M365 / any) — app password or relay creds.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
 
     # State (SQLite, offline).
     db_path: str = str(REPO_ROOT / "invoice_auditor.db")

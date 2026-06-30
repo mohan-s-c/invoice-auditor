@@ -46,4 +46,9 @@ class ApiAPClient:
 
 
 def get_client() -> APClient:
-    return ApiAPClient() if settings.ap_mode == "api" else MockAPClient()
+    if settings.ap_mode == "ramp":
+        from .ramp import RampAPClient
+        return RampAPClient()
+    if settings.ap_mode == "api":
+        return ApiAPClient()
+    return MockAPClient()
