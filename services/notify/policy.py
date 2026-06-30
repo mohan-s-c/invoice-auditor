@@ -10,9 +10,10 @@ flag also copies the Operations head. Regions without an RP fall back to the Ops
 """
 from __future__ import annotations
 
-# Per-spend-category dollar thresholds (assumed). Above this, a flag is emailed even if
-# the severity alone wouldn't trigger it.
-CATEGORY_DOLLAR_THRESHOLD = {
+# Per-spend-category dollar thresholds (assumed defaults). Above this, a flag is emailed even
+# if the severity alone wouldn't trigger it. These are editable in Settings (HQ) and persisted
+# in app_config; the defaults below seed the values and are the fallback.
+DEFAULT_CATEGORY_DOLLAR_THRESHOLD = {
     "Maintenance & repairs": 2000.0,
     "Pool service": 1500.0,
     "Cleaning supplies": 1000.0,
@@ -21,6 +22,32 @@ CATEGORY_DOLLAR_THRESHOLD = {
 }
 DEFAULT_DOLLAR_THRESHOLD = 1000.0
 ALWAYS_NOTIFY_SEVERITY = {"critical", "high"}
+_CONFIG_KEY = "notify_thresholds"
+
+
+def get_thresholds() -> dict:
+    """Effective thresholds = defaults overlaid with any HQ-saved overrides (app_config)."""
+    from libs.common import db
+    stored = db.get_config(_CONFIG_KEY) or {}
+    cats = dict(DEFAULT_CATEGORY_DOLLAR_THRESHOLD)
+    for k, v in (stored.get("categories") or {}).items():
+        cats[k] = float(v)
+    default = float(stored.get("default", DEFAULT_DOLLAR_THRESHOLD))
+    return {"categories": cats, "default": default}
+
+
+def set_thresholds(categories: dict | None = None, default: float | None = None) -> dict:
+    """Persist threshold overrides (merge with existing). Returns the effective thresholds."""
+    from libs.common import db
+    cur = db.get_config(_CONFIG_KEY) or {}
+    merged = dict(cur.get("categories") or {})
+    for k, v in (categories or {}).items():
+        merged[k] = float(v)
+    payload = {"categories": merged,
+               "default": float(default) if default is not None
+               else float(cur.get("default", DEFAULT_DOLLAR_THRESHOLD))}
+    db.set_config(_CONFIG_KEY, payload)
+    return get_thresholds()
 
 # Region -> Regional President (assumed contacts; mirrors rbac roles where one exists).
 REGION_CONTACTS = {
@@ -38,7 +65,8 @@ OPS_HEAD = {"name": "Operations Head", "email": "ops.head@awayday.example",
 
 
 def threshold_for(category: str) -> float:
-    return CATEGORY_DOLLAR_THRESHOLD.get(category, DEFAULT_DOLLAR_THRESHOLD)
+    t = get_thresholds()
+    return t["categories"].get(category, t["default"])
 
 
 def should_notify(flag: dict) -> tuple[bool, str]:

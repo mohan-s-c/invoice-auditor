@@ -60,10 +60,13 @@ CREATE TABLE IF NOT EXISTS notifications_outbox (  -- email notifications (queue
     provider TEXT, status TEXT,                             -- 'queued' | 'sent' | 'failed'
     ts TEXT
 );
+CREATE TABLE IF NOT EXISTS app_config (            -- editable settings (e.g. notify thresholds)
+    key TEXT PRIMARY KEY, value TEXT
+);
 """
 
 _TABLES = ("vendors", "contracts", "invoices", "invoice_lines", "flags",
-           "dispositions", "audit", "model_versions", "notifications_outbox")
+           "dispositions", "audit", "model_versions", "notifications_outbox", "app_config")
 
 
 def connect() -> sqlite3.Connection:
@@ -109,6 +112,16 @@ def dumps(value: Any) -> str:
 
 def loads(value: str | None) -> Any:
     return json.loads(value) if value else None
+
+
+def get_config(key: str, default: Any = None) -> Any:
+    row = query_one("SELECT value FROM app_config WHERE key=?", (key,))
+    return loads(row["value"]) if row else default
+
+
+def set_config(key: str, value: Any) -> None:
+    execute("INSERT INTO app_config (key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, dumps(value)))
 
 
 def reset() -> None:

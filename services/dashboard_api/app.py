@@ -21,6 +21,7 @@ from services import bootstrap
 from services.agent import autonomy
 from services.learning.capture import label_stats, record_disposition
 from services.notify import dispatch as notify_dispatch
+from services.notify import policy as notify_policy_mod
 from services.training import registry, trainer
 
 _STATIC = Path(__file__).resolve().parent / "static"
@@ -288,6 +289,29 @@ def notify_run(force: bool = False):
     if rbac.current_role()["region"] is not None:
         raise HTTPException(403, "only HQ can run a notification dispatch")
     return notify_dispatch.dispatch_notifications(force=force)
+
+
+@app.get("/api/notify/policy")
+def notify_policy():
+    t = notify_policy_mod.get_thresholds()
+    return {"categories": t["categories"], "default": t["default"],
+            "always_notify_severity": sorted(notify_policy_mod.ALWAYS_NOTIFY_SEVERITY)}
+
+
+class ThresholdsReq(BaseModel):
+    categories: dict[str, float] | None = None
+    default: float | None = None
+
+
+@app.patch("/api/notify/policy")
+def notify_policy_update(req: ThresholdsReq):
+    """Edit per-category notification thresholds. HQ-only."""
+    actor = rbac.current_role()
+    if actor["region"] is not None:
+        raise HTTPException(403, "only HQ can edit notification thresholds")
+    t = notify_policy_mod.set_thresholds(req.categories or {}, req.default)
+    record(AuditEvent("human", actor["id"], "notify.thresholds.update", "policy", after=t))
+    return t
 
 
 # --- self-learning: model registry + fine-tune loop (Phase 2) ---------------

@@ -45,6 +45,26 @@ def test_seed_populates_outbox_and_dispatch_is_idempotent():
     assert len(dispatch.outbox()) == before
 
 
+def test_thresholds_persist_and_affect_policy():
+    # default Linens threshold is $750; a $500 medium Linens flag does not notify...
+    flag = {"severity": "medium", "amount": 500, "category": "Linens", "region": "Gulf"}
+    assert not policy.should_notify(flag)[0]
+    policy.set_thresholds({"Linens": 400})        # ...lower it and the same flag now notifies
+    assert policy.should_notify(flag)[0]
+    assert policy.get_thresholds()["categories"]["Linens"] == 400
+
+
+def test_policy_api_get_and_patch_hq_only():
+    g = client.get("/api/notify/policy").json()
+    assert "categories" in g and "default" in g and g["always_notify_severity"]
+    client.post("/api/role", json={"role": "rp-gulf"})
+    assert client.patch("/api/notify/policy", json={"default": 1234}).status_code == 403
+    client.post("/api/role", json={"role": "kyle-hq"})
+    upd = client.patch("/api/notify/policy",
+                       json={"categories": {"Linens": 111}, "default": 2222}).json()
+    assert upd["categories"]["Linens"] == 111 and upd["default"] == 2222
+
+
 def test_outbox_api_is_region_scoped_and_dispatch_is_hq_only():
     full = client.get("/api/notify/outbox").json()["count"]
     client.post("/api/role", json={"role": "rp-gulf"})
