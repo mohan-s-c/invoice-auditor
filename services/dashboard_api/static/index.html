@@ -142,6 +142,7 @@ h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--m
 const $=s=>document.querySelector(s);
 const api=async(p,o)=>{const r=await fetch(p,o);if(!r.ok)throw new Error((await r.text())||r.status);return r.json();};
 const post=(p,b)=>api(p,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b||{})});
+const patch=(p,b)=>api(p,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(b||{})});
 const esc=s=>(s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const usd=v=>'$'+Number(v||0).toLocaleString();
 const usdk=v=>'$'+(Number(v||0)/1000).toFixed(1)+'k';
@@ -295,16 +296,29 @@ async function renderVendors(){
 
 async function renderNotifs(){
   const el=$('#notifs'); el.innerHTML='<div class="empty">Loading…</div>';
-  const d=await api('/api/notifications');
+  const [d,ob,me]=await Promise.all([api('/api/notifications'),api('/api/notify/outbox'),api('/api/me')]);
+  const isHQ=me.role&&me.role.region===null;
+  const chan={offline:'queued (offline)',graph:'Microsoft 365',smtp:'SMTP'}[ob.provider]||ob.provider;
+  const stPill=s=>s==='sent'?'<span class="pill p-grn">sent</span>':s==='queued'?'<span class="pill p-amb">queued</span>':'<span class="pill p-red">failed</span>';
   el.innerHTML=`<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:6px"><div class="muted small">${d.unread} open · routed to Kyle (HQ) and the responsible regional president</div><button class="btn ghost small">Mark all read</button></div>
   <div class="card"><div class="bd" style="padding:6px 0"><ul class="tl" style="padding:0 10px">
   ${d.items.length?d.items.map(n=>`<li><span class="tdot" style="background:${SEVCOL[n.severity]}"></span><div style="flex:1"><b>${esc(n.severity)} · ${esc(n.anomaly_type)}</b> — ${esc(n.vendor)} ${usd(n.amount)} (${esc(n.brand)}). <span class="muted">${n.recoverable?usd(n.recoverable)+' recoverable.':esc(n.recommended_action)+'.'}</span><div class="muted small">${esc(n.route)}</div></div><button class="btn small" data-go="${n.invoice_id}">View</button></li>`).join(''):'<li class="empty">No open notifications — you\'re all caught up.</li>'}
-  </ul></div></div>`;
+  </ul></div></div>
+  <div class="row" style="justify-content:space-between;align-items:center;margin:18px 0 6px"><h2 class="sec" style="margin:0">Email notifications — outbox</h2><div class="muted small">channel: ${esc(chan)} · ${ob.sent} sent · ${ob.queued} queued${isHQ?' · <button class="btn small" onclick="runDispatch()">Run dispatch</button>':''}</div></div>
+  <div class="card"><div class="bd" style="padding:0"><table><thead><tr><th>Recipient</th><th>Severity</th><th>Anomaly</th><th>Subject</th><th>Why</th><th>Status</th></tr></thead><tbody>
+  ${ob.items.length?ob.items.map(o=>`<tr><td><b>${esc(o.recipient_name)}</b> <span class="muted small">${esc(o.kind)} · ${esc(o.recipient_email)}</span></td><td><span class="pill ${SEVPILL[o.severity]}">${esc(o.severity)}</span></td><td>${esc(o.anomaly_type)}</td><td class="muted small">${esc(o.subject)}</td><td class="muted small">${esc(o.reason)}</td><td>${stPill(o.status)}</td></tr>`).join(''):'<tr><td colspan="6" class="empty">No notifications routed yet.</td></tr>'}
+  </tbody></table></div></div>
+  <div class="note" style="margin-top:12px"><span>i</span><div>Notifications fire when a flag is high/critical severity or clears its category dollar threshold, routed to the region's president (critical also copies the Ops head). <b>${ob.external_email_enabled?'External email is ENABLED.':'Offline mode — messages are queued, not sent.'}</b> Swap to Microsoft 365 or SMTP via env config.</div></div>`;
+}
+async function runDispatch(){
+  try{const r=await post('/api/notify/dispatch');toast(`Dispatch: ${r.sent} sent · ${r.queued} queued · ${r.skipped_below_threshold} below threshold`);renderNotifs();}
+  catch(e){toast('Error: '+e.message);}
 }
 
 async function renderSettings(){
   const el=$('#settings'); el.innerHTML='<div class="empty">Loading…</div>';
-  const [d,reg]=await Promise.all([api('/api/autonomy'),api('/api/registry')]);
+  const [d,reg,pol,me]=await Promise.all([api('/api/autonomy'),api('/api/registry'),api('/api/notify/policy'),api('/api/me')]);
+  const isHQ=me.role&&me.role.region===null;
   const lvlPill=l=>l.startsWith('L3')?'p-grn':l.startsWith('L2')?'p-blu':'p-gry';
   const stPill={on:'<span class="pill p-grn">● On</span>',promoting:'<span class="pill p-amb">◐ Promoting</span>',learning:'<span class="pill p-gry">○ Learning</span>'};
   el.innerHTML=`<div class="card"><div class="hd"><h3>Autonomy by anomaly type</h3><span class="mut">auto-act unlocks at sustained precision ≥ 0.95 (low-value, reversible)</span></div><div class="bd" style="padding:0">
@@ -316,6 +330,13 @@ async function renderSettings(){
     <div class="card"><div class="hd"><h3>Guardrails</h3><span class="mut">policy</span></div><div class="bd small">${d.guardrails.map(g=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)"><span>${esc(g.policy)}</span><span>${esc(g.value)}</span></div>`).join('')}</div></div>
   </div>
   <div class="gate" style="margin-top:14px">Promotion to auto-act is gated by sustained precision and is reversible — any anomaly type can be rolled back to recommend-only with one click.</div>
+  <h2 class="sec">Notification thresholds</h2>
+  <div class="card"><div class="hd"><h3>Per-category dollar thresholds</h3><span class="mut">a flag emails the region's RP when it's high/critical, or its amount clears the category threshold</span>${isHQ?'<button class="btn small" style="margin-left:auto" onclick="saveThresholds()">Save thresholds</button>':'<span class="mut" style="margin-left:auto">HQ only</span>'}</div><div class="bd" style="padding:0">
+  <table><thead><tr><th>Category</th><th>Threshold ($)</th></tr></thead><tbody>
+  ${Object.entries(pol.categories).map(([c,v])=>`<tr><td>${esc(c)}</td><td><input class="thr" data-cat="${esc(c)}" type="number" min="0" step="50" value="${v}" ${isHQ?'':'disabled'} style="width:130px;padding:6px 9px;border:1px solid #D9E0EA;border-radius:7px;font:inherit;font-size:13px"/></td></tr>`).join('')}
+  <tr><td><b>Default</b> <span class="muted small">(any other category)</span></td><td><input id="thrDefault" type="number" min="0" step="50" value="${pol.default}" ${isHQ?'':'disabled'} style="width:130px;padding:6px 9px;border:1px solid #D9E0EA;border-radius:7px;font:inherit;font-size:13px"/></td></tr>
+  </tbody></table></div>
+  <div class="bd" style="padding-top:0"><div class="note"><span>i</span><div>Always-notify severities: <b>${pol.always_notify_severity.join(', ')}</b> (emailed regardless of amount). Changes are saved to policy and apply on the next dispatch.</div></div></div></div>
   <h2 class="sec">Self-learning — model registry</h2>
   <div class="card"><div class="hd"><h3>Champion model</h3><span class="mut">human dispositions → LoRA fine-tune (local) → eval gate → promote</span>
     <span style="margin-left:auto;display:flex;gap:8px"><button class="btn small" onclick="runFinetune()">Run fine-tune</button><button class="btn small ghost" onclick="rollbackModel()">Roll back</button></span></div>
@@ -342,6 +363,12 @@ async function rollbackModel(){
   try{const r=await post('/api/registry/rollback');
     toast(r.rolled_back?`Rolled back to ${r.champion}`:'Nothing to roll back');
   }catch(e){toast('Error: '+e.message);} renderSettings();
+}
+async function saveThresholds(){
+  const categories={}; document.querySelectorAll('input.thr').forEach(i=>{categories[i.dataset.cat]=parseFloat(i.value)||0;});
+  const def=parseFloat($('#thrDefault').value)||0;
+  try{await patch('/api/notify/policy',{categories,default:def}); toast('Notification thresholds saved');renderSettings();}
+  catch(e){toast('Error: '+e.message);}
 }
 
 async function renderProc(){

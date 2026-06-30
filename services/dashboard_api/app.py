@@ -20,6 +20,8 @@ from libs.modelserve.provider import get_provider
 from services import bootstrap
 from services.agent import autonomy
 from services.learning.capture import label_stats, record_disposition
+from services.notify import dispatch as notify_dispatch
+from services.notify import policy as notify_policy_mod
 from services.training import registry, trainer
 
 _STATIC = Path(__file__).resolve().parent / "static"
@@ -267,6 +269,49 @@ def procurement():
 @app.get("/api/audit")
 def audit(limit: int = 60):
     return {"events": trail(limit=limit)}
+
+
+# --- email notifications: threshold-based routing to RP / Ops (next phase) ------------------
+@app.get("/api/notify/outbox")
+def notify_outbox():
+    """Notifications routed for the current scope (RP sees only their region)."""
+    items = notify_dispatch.outbox(region=_scope())
+    return {"items": items, "count": len(items),
+            "queued": sum(1 for i in items if i["status"] == "queued"),
+            "sent": sum(1 for i in items if i["status"] == "sent"),
+            "provider": settings.notify_provider,
+            "external_email_enabled": settings.allow_external_email}
+
+
+@app.post("/api/notify/dispatch")
+def notify_run(force: bool = False):
+    """Evaluate open flags against the policy and send/queue notifications. Controller-only."""
+    if rbac.current_role()["region"] is not None:
+        raise HTTPException(403, "only HQ can run a notification dispatch")
+    return notify_dispatch.dispatch_notifications(force=force)
+
+
+@app.get("/api/notify/policy")
+def notify_policy():
+    t = notify_policy_mod.get_thresholds()
+    return {"categories": t["categories"], "default": t["default"],
+            "always_notify_severity": sorted(notify_policy_mod.ALWAYS_NOTIFY_SEVERITY)}
+
+
+class ThresholdsReq(BaseModel):
+    categories: dict[str, float] | None = None
+    default: float | None = None
+
+
+@app.patch("/api/notify/policy")
+def notify_policy_update(req: ThresholdsReq):
+    """Edit per-category notification thresholds. HQ-only."""
+    actor = rbac.current_role()
+    if actor["region"] is not None:
+        raise HTTPException(403, "only HQ can edit notification thresholds")
+    t = notify_policy_mod.set_thresholds(req.categories or {}, req.default)
+    record(AuditEvent("human", actor["id"], "notify.thresholds.update", "policy", after=t))
+    return t
 
 
 # --- self-learning: model registry + fine-tune loop (Phase 2) ---------------
