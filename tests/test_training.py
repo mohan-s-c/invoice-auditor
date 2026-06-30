@@ -31,6 +31,19 @@ def test_dismiss_is_a_false_positive_label():
     assert ev["per_type"].get(f["anomaly_type"]) == 0.0
 
 
+def test_approve_is_neutral_not_a_false_positive():
+    # Approving a flagged invoice means "pay it" — ambiguous, so it must NOT count against
+    # the flag's precision (the flag may have been correct; the reviewer just accepts it).
+    f = _flag()
+    record_disposition(f["id"], f["invoice_id"], "kyle-hq", "approve",
+                       model_version=f["model_version"])
+    ev = trainer.eval_metrics()
+    assert ev["labels"] == 1                       # captured as a label
+    assert ev["false_positives"] == 0              # but not a false positive
+    assert ev["confirmed"] == 0                    # and not a confirmation
+    assert ev["per_type"].get(f["anomaly_type"]) is None
+
+
 def test_finetune_promotes_when_it_beats_champion_and_clears_bar():
     f = _flag()
     # a batch of confirmations → enough uplift to clear the bar

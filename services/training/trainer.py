@@ -18,11 +18,14 @@ from libs.common.config import settings
 
 from . import registry
 
-# A disposition that confirms the flag was a true anomaly (agreement) vs a false positive.
-# "dismiss" is the reviewer explicitly disagreeing with the flag (not an anomaly); together
-# with "approve" it is a false-positive label that teaches the model to flag the pattern less.
+# Precision is measured only over flags a human took an unambiguous stance on:
+# - CONFIRM  : the reviewer acted on the flag (it was a real anomaly) -> true positive.
+# - FALSE_POS: the reviewer explicitly said "not an anomaly" (dismiss) -> the flag was wrong.
+# "approve" is intentionally NEITHER: approving a flagged invoice means "pay it", which is
+# ambiguous — the flag may have been correct but the reviewer accepts it anyway. Counting it
+# as a false positive would punish correct flags, so approvals are excluded from the signal.
 _CONFIRM = {"reject", "hold", "escalate"}
-_FALSE_POS = {"approve", "dismiss"}
+_FALSE_POS = {"dismiss"}
 
 
 def eval_metrics() -> dict:
