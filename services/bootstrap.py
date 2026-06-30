@@ -11,9 +11,9 @@ import datetime as dt
 from libs.ap_client.client import get_client
 from libs.common import db
 from libs.common.audit import AuditEvent, record
-from libs.modelserve.provider import model_version
 from services.agent import autonomy
 from services.detection.engine import detect_all
+from services.training import registry
 
 
 def _now() -> str:
@@ -25,7 +25,12 @@ def seed_all() -> dict[str, int]:
     db.reset()
     client = get_client()
     vendors, contracts, invoices = client.vendors(), client.contracts(), client.invoices()
-    mv = model_version()
+    # Register the initial champion model in the registry; flags are stamped with its version.
+    base_prec = round(sum(a["precision"] for a in autonomy.table()) / len(autonomy.table()), 3)
+    registry.register("qwen-offline-v1", base="qwen-instruct", parent=None, status="champion",
+                      precision_overall=base_prec, metrics={"overall": base_prec, "seed": True},
+                      labels_used=0)
+    mv = registry.champion_version()
 
     db.executemany(
         "INSERT INTO vendors (id,name,category,contract,region,spend_ytd,vs_benchmark) "

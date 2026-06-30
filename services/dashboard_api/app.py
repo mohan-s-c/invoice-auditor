@@ -15,10 +15,12 @@ from pydantic import BaseModel
 
 from libs.common import db, rbac
 from libs.common.audit import AuditEvent, record, trail
-from libs.modelserve.provider import get_provider, model_version
+from libs.common.config import settings
+from libs.modelserve.provider import get_provider
 from services import bootstrap
 from services.agent import autonomy
 from services.learning.capture import label_stats, record_disposition
+from services.training import registry, trainer
 
 _STATIC = Path(__file__).resolve().parent / "static"
 _ACTION_STATUS = {"approve": "approved", "reject": "rejected", "hold": "held",
@@ -55,7 +57,7 @@ def health():
 @app.get("/api/me")
 def me():
     return {"role": rbac.current_role(), "roles": rbac.list_roles(),
-            "model_version": model_version()}
+            "model_version": registry.champion_version()}
 
 
 class RoleReq(BaseModel):
@@ -248,6 +250,29 @@ def procurement():
 @app.get("/api/audit")
 def audit(limit: int = 60):
     return {"events": trail(limit=limit)}
+
+
+# --- self-learning: model registry + fine-tune loop (Phase 2) ---------------
+@app.get("/api/registry")
+def registry_view():
+    return {"champion": registry.champion(), "versions": registry.list_versions(),
+            "eval": trainer.eval_metrics(), "labels": label_stats(),
+            "bar": settings.autonomy_precision_bar}
+
+
+@app.post("/api/training/run")
+def training_run():
+    """Run one self-learning cycle: dispositions → fine-tune (simulated) → eval gate → promote."""
+    res = trainer.run_finetune()
+    record(AuditEvent("system", "trainer", "training.run", res["candidate"],
+                      after={"promoted": res["promoted"], "precision": res["precision"]},
+                      model_version=res["candidate"]))
+    return res
+
+
+@app.post("/api/registry/rollback")
+def registry_rollback():
+    return registry.rollback(by="kyle-hq")
 
 
 @app.post("/api/demo/reset")

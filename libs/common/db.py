@@ -48,10 +48,15 @@ CREATE TABLE IF NOT EXISTS audit (
     id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, actor TEXT, actor_id TEXT,
     action TEXT, target TEXT, before TEXT, after TEXT, model_version TEXT
 );
+CREATE TABLE IF NOT EXISTS model_versions (       -- self-learning model registry (Phase 2)
+    version TEXT PRIMARY KEY, base TEXT, parent TEXT,
+    status TEXT,             -- 'candidate' | 'champion' | 'retired'
+    precision_overall REAL, metrics TEXT, labels_used INTEGER, created_ts TEXT
+);
 """
 
 _TABLES = ("vendors", "contracts", "invoices", "invoice_lines", "flags",
-           "dispositions", "audit")
+           "dispositions", "audit", "model_versions")
 
 
 def connect() -> sqlite3.Connection:

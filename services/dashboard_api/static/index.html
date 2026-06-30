@@ -280,7 +280,7 @@ async function renderNotifs(){
 
 async function renderSettings(){
   const el=$('#settings'); el.innerHTML='<div class="empty">Loading…</div>';
-  const d=await api('/api/autonomy');
+  const [d,reg]=await Promise.all([api('/api/autonomy'),api('/api/registry')]);
   const lvlPill=l=>l.startsWith('L3')?'p-grn':l.startsWith('L2')?'p-blu':'p-gry';
   const stPill={on:'<span class="pill p-grn">● On</span>',promoting:'<span class="pill p-amb">◐ Promoting</span>',learning:'<span class="pill p-gry">○ Learning</span>'};
   el.innerHTML=`<div class="card"><div class="hd"><h3>Autonomy by anomaly type</h3><span class="mut">auto-act unlocks at sustained precision ≥ 0.95 (low-value, reversible)</span></div><div class="bd" style="padding:0">
@@ -291,7 +291,33 @@ async function renderSettings(){
     <div class="card"><div class="hd"><h3>Notification routing</h3></div><div class="bd small">${d.routing.map(r=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)"><span>${esc(r.severity)}</span><span class="muted">${esc(r.rule)}</span></div>`).join('')}</div></div>
     <div class="card"><div class="hd"><h3>Guardrails</h3><span class="mut">policy</span></div><div class="bd small">${d.guardrails.map(g=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)"><span>${esc(g.policy)}</span><span>${esc(g.value)}</span></div>`).join('')}</div></div>
   </div>
-  <div class="gate" style="margin-top:14px">Promotion to auto-act is gated by sustained precision and is reversible — any anomaly type can be rolled back to recommend-only with one click.</div>`;
+  <div class="gate" style="margin-top:14px">Promotion to auto-act is gated by sustained precision and is reversible — any anomaly type can be rolled back to recommend-only with one click.</div>
+  <h2 class="sec">Self-learning — model registry</h2>
+  <div class="card"><div class="hd"><h3>Champion model</h3><span class="mut">human dispositions → LoRA fine-tune (local) → eval gate → promote</span>
+    <span style="margin-left:auto;display:flex;gap:8px"><button class="btn small" onclick="runFinetune()">Run fine-tune</button><button class="btn small ghost" onclick="rollbackModel()">Roll back</button></span></div>
+    <div class="bd">
+    <div class="row" style="gap:28px;margin-bottom:12px">
+      <div><div class="muted small">Champion</div><div style="font-weight:600">${esc(reg.champion?reg.champion.version:'—')}</div></div>
+      <div><div class="muted small">Precision (overall)</div><div style="font-weight:600">${reg.champion?reg.champion.precision_overall.toFixed(2):'—'}</div></div>
+      <div><div class="muted small">Labels captured</div><div style="font-weight:600">${reg.eval.labels}</div></div>
+      <div><div class="muted small">Promotion bar</div><div style="font-weight:600">≥ ${reg.bar.toFixed(2)}</div></div>
+    </div>
+    <table><thead><tr><th>Version</th><th>Status</th><th>Precision</th><th>Labels used</th><th>Created</th></tr></thead><tbody>
+    ${reg.versions.map(v=>`<tr><td class="mono">${esc(v.version)}</td><td>${v.status==='champion'?'<span class="pill p-grn">champion</span>':v.status==='candidate'?'<span class="pill p-blu">candidate</span>':'<span class="pill p-gry">retired</span>'}</td><td>${(v.precision_overall||0).toFixed(2)}</td><td>${v.labels_used}</td><td class="muted small">${esc((v.created_ts||'').slice(0,16).replace('T',' '))}</td></tr>`).join('')}
+    </tbody></table>
+    <div class="note" style="margin-top:12px"><span>i</span><div>All training is local (self-hosted Qwen) — no data leaves the boundary. A candidate is promoted only if it beats the champion and clears the precision bar; the prior version is retained for instant rollback. (Fine-tune is simulated in this offline build.)</div></div>
+  </div></div>`;
+}
+async function runFinetune(){
+  try{const r=await post('/api/training/run');
+    toast(r.promoted?`Promoted ${r.candidate} (precision ${r.precision.toFixed(2)})`
+      :`${r.candidate} held back — ${r.beats_champion?'below bar':'did not beat champion'}`);
+  }catch(e){toast('Error: '+e.message);} renderSettings(); refreshCounts();
+}
+async function rollbackModel(){
+  try{const r=await post('/api/registry/rollback');
+    toast(r.rolled_back?`Rolled back to ${r.champion}`:'Nothing to roll back');
+  }catch(e){toast('Error: '+e.message);} renderSettings();
 }
 
 async function renderProc(){
