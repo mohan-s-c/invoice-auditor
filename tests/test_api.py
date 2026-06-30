@@ -60,6 +60,34 @@ def test_dismiss_records_false_positive_with_reason():
     assert any((e.get("after") or {}).get("note") for e in det["audit"])
 
 
+def test_paid_invoice_blocks_reject_allows_recover():
+    # INV-44871 is a flagged invoice that was already paid -> recovery path only.
+    det = client.get("/api/invoices/INV-44871").json()
+    assert det["invoice"]["paid"] is True
+    # reject / hold are blocked once the money has gone out the door
+    assert client.post("/api/invoices/INV-44871/disposition",
+                       json={"action": "reject"}).status_code == 409
+    assert client.post("/api/invoices/INV-44871/disposition",
+                       json={"action": "hold"}).status_code == 409
+    # recover opens a clawback case (and is captured as a label)
+    out = client.post("/api/invoices/INV-44871/disposition",
+                      json={"action": "recover", "note": "duplicate already paid"}).json()
+    assert out["status"] == "recovery"
+    assert out["labels"].get("recover", 0) >= 1
+
+
+def test_unpaid_invoice_blocks_recover():
+    # INV-45120 has not been paid -> nothing to claw back.
+    assert client.get("/api/invoices/INV-45120").json()["invoice"]["paid"] is False
+    assert client.post("/api/invoices/INV-45120/disposition",
+                       json={"action": "recover"}).status_code == 409
+
+
+def test_flags_expose_paid_flag():
+    flags = client.get("/api/flags").json()["flags"]
+    assert any(f["paid"] for f in flags) and any(not f["paid"] for f in flags)
+
+
 def test_vendors_notifications_autonomy():
     v = client.get("/api/vendors").json()
     assert v["vendors"] and 0 <= v["off_contract_pct"] <= 100

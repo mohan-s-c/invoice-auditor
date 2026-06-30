@@ -24,7 +24,10 @@ from services.training import registry, trainer
 
 _STATIC = Path(__file__).resolve().parent / "static"
 _ACTION_STATUS = {"approve": "approved", "reject": "rejected", "hold": "held",
-                  "escalate": "escalated", "dismiss": "cleared"}
+                  "escalate": "escalated", "dismiss": "cleared", "recover": "recovery"}
+# Actions that only make sense before money has gone out the door, and after.
+_UNPAID_ONLY = {"reject", "hold"}   # can't stop a payment that already cleared
+_PAID_ONLY = {"recover"}            # nothing to claw back if it hasn't been paid
 
 
 @asynccontextmanager
@@ -78,7 +81,8 @@ def _flag_row(r: dict) -> dict:
             "brand": r["brand"], "region": r["region"], "category": r["category"],
             "amount": r["amount"], "anomaly_type": r["anomaly_type"], "severity": r["severity"],
             "confidence": r["confidence"], "recommended_action": r["recommended_action"],
-            "recoverable": r["recoverable"], "status": r["status"]}
+            "recoverable": r["recoverable"], "status": r["status"],
+            "paid": bool(r["paid"]) if "paid" in r.keys() else False}
 
 
 @app.get("/api/dashboard")
@@ -140,6 +144,7 @@ def invoice_detail(invoice_id: str):
     if not inv or not rbac.visible(inv["region"]):
         raise HTTPException(404, "invoice not found in your scope")
     inv = dict(inv)
+    inv["paid"] = bool(inv["paid"])
     lines = [dict(r) for r in db.query("SELECT * FROM invoice_lines WHERE invoice_id=?",
                                        (invoice_id,))]
     flag = db.query_one("SELECT * FROM flags WHERE invoice_id=?", (invoice_id,))
@@ -150,9 +155,14 @@ def invoice_detail(invoice_id: str):
         narrative = get_provider().complete(
             "You are an invoice controls analyst.",
             f"Invoice {invoice_id} flagged for {flag['anomaly_type']}; recommend a disposition.")
-        rec = ("Recommend a partial hold: keep clean lines; reject the flagged lines"
-               + (f" (est. recoverable ${flag['recoverable']:,.0f})"
-                  if flag["recoverable"] else "") + ".")
+        recoverable_txt = (f" (est. recoverable ${flag['recoverable']:,.0f})"
+                           if flag["recoverable"] else "")
+        if inv["paid"]:
+            rec = ("Invoice already paid — recommend opening a recovery/clawback case for the "
+                   "flagged lines" + recoverable_txt + "; pursue a vendor credit or refund.")
+        else:
+            rec = ("Recommend a partial hold: keep clean lines; reject the flagged lines"
+                   + recoverable_txt + ".")
         agent = {"action": flag["recommended_action"], "confidence": flag["confidence"],
                  "autonomy": autonomy.level_for(flag["anomaly_type"]),
                  "recoverable": flag["recoverable"], "recommendation": rec,
@@ -174,6 +184,13 @@ def disposition(invoice_id: str, req: DispositionReq):
         raise HTTPException(404, "invoice not found in your scope")
     if req.action not in _ACTION_STATUS:
         raise HTTPException(400, f"unknown action {req.action}")
+    paid = bool(inv["paid"])
+    if paid and req.action in _UNPAID_ONLY:
+        raise HTTPException(409, f"invoice already paid — cannot {req.action}; "
+                                 "use 'recover' to open a recovery/clawback case")
+    if not paid and req.action in _PAID_ONLY:
+        raise HTTPException(409, "invoice not yet paid — nothing to recover; "
+                                 "reject or place a hold instead")
     flag = db.query_one("SELECT * FROM flags WHERE invoice_id=?", (invoice_id,))
     flag_id = flag["id"] if flag else None
     new_status = _ACTION_STATUS[req.action]

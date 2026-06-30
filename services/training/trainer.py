@@ -20,11 +20,12 @@ from . import registry
 
 # Precision is measured only over flags a human took an unambiguous stance on:
 # - CONFIRM  : the reviewer acted on the flag (it was a real anomaly) -> true positive.
+#              "recover" is the paid-invoice equivalent of reject/hold (open a clawback).
 # - FALSE_POS: the reviewer explicitly said "not an anomaly" (dismiss) -> the flag was wrong.
 # "approve" is intentionally NEITHER: approving a flagged invoice means "pay it", which is
 # ambiguous — the flag may have been correct but the reviewer accepts it anyway. Counting it
 # as a false positive would punish correct flags, so approvals are excluded from the signal.
-_CONFIRM = {"reject", "hold", "escalate"}
+_CONFIRM = {"reject", "hold", "escalate", "recover"}
 _FALSE_POS = {"dismiss"}
 
 

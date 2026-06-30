@@ -49,9 +49,9 @@ def seed_all() -> dict[str, int]:
         status = "pending" if flagged else "cleared"
         db.execute(
             "INSERT INTO invoices (id,brand,region,vendor_id,vendor,category,amount,tax,status,"
-            "approver,filed_ts,model_version) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            "approver,filed_ts,model_version,paid,paid_ts) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (inv.id, inv.brand, inv.region, inv.vendor_id, inv.vendor, inv.category, inv.amount,
-             inv.tax, status, inv.approver, inv.filed_ts, mv))
+             inv.tax, status, inv.approver, inv.filed_ts, mv, 1 if inv.paid else 0, inv.paid_ts))
         for i, line in enumerate(inv.lines):
             db.execute(
                 "INSERT INTO invoice_lines (invoice_id,item,category,qty,unit_price,amount,flag) "
@@ -69,10 +69,11 @@ def seed_all() -> dict[str, int]:
         db.execute(
             "INSERT INTO flags (id,invoice_id,brand,region,vendor,category,amount,anomaly_type,"
             "severity,confidence,recommended_action,recoverable,rationale,model_version,status,"
-            "created_ts) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "created_ts,paid) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (flag_id, inv.id, inv.brand, inv.region, inv.vendor, inv.category, inv.amount,
              p.type, p.severity, round(max(a.confidence for a in res.anomalies), 2),
-             p.action, recoverable, db.dumps(rationale), mv, "open", _now()))
+             p.action, recoverable, db.dumps(rationale), mv, "open", _now(),
+             1 if inv.paid else 0))
         record(AuditEvent("agent", "auditor", "flag.scored", inv.id,
                           after={"anomalies": len(res.anomalies), "type": p.type,
                                  "severity": p.severity}, model_version=mv))

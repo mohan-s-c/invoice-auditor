@@ -24,6 +24,8 @@ class Invoice(BaseModel):
     amount: float
     tax: float = 0.0
     status: str = "pending"
+    paid: bool = False           # already disbursed → anomalies become recovery/clawback cases
+    paid_ts: str | None = None
     approver: str | None = None
     filed_ts: str | None = None
     lines: list[InvoiceLine] = Field(default_factory=list)

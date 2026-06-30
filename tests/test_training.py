@@ -44,6 +44,18 @@ def test_approve_is_neutral_not_a_false_positive():
     assert ev["per_type"].get(f["anomaly_type"]) is None
 
 
+def test_recover_is_a_confirmation_true_positive():
+    # On an already-paid invoice, "recover" is the confirm action (the flag was real).
+    from libs.common import db
+    f = dict(db.query_one("SELECT * FROM flags WHERE paid=1 LIMIT 1"))
+    record_disposition(f["id"], f["invoice_id"], "kyle-hq", "recover",
+                       model_version=f["model_version"])
+    ev = trainer.eval_metrics()
+    assert ev["confirmed"] >= 1
+    assert ev["false_positives"] == 0
+    assert ev["per_type"].get(f["anomaly_type"]) == 1.0
+
+
 def test_finetune_promotes_when_it_beats_champion_and_clears_bar():
     f = _flag()
     # a batch of confirmations → enough uplift to clear the bar

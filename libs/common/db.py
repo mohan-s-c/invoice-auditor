@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS contracts (         -- HQ/regional rate cards
 CREATE TABLE IF NOT EXISTS invoices (
     id TEXT PRIMARY KEY, brand TEXT, region TEXT, vendor_id TEXT, vendor TEXT,
     category TEXT, amount REAL, tax REAL, status TEXT, approver TEXT,
-    filed_ts TEXT, model_version TEXT
+    filed_ts TEXT, model_version TEXT, paid INTEGER DEFAULT 0, paid_ts TEXT
 );
 CREATE TABLE IF NOT EXISTS invoice_lines (
     id INTEGER PRIMARY KEY AUTOINCREMENT, invoice_id TEXT, item TEXT, category TEXT,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS flags (
     id TEXT PRIMARY KEY, invoice_id TEXT, brand TEXT, region TEXT, vendor TEXT,
     category TEXT, amount REAL, anomaly_type TEXT, severity TEXT, confidence REAL,
     recommended_action TEXT, recoverable REAL, rationale TEXT, model_version TEXT,
-    status TEXT, created_ts TEXT
+    status TEXT, created_ts TEXT, paid INTEGER DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS dispositions (      -- human decisions == training labels
     id INTEGER PRIMARY KEY AUTOINCREMENT, flag_id TEXT, invoice_id TEXT,

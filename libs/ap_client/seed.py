@@ -61,11 +61,12 @@ CONTRACTS = [
 
 
 def _inv(id, brand, region, v, category, lines, status="pending", tax=0.0, filed="2026-06-29",
-         approver="A. Operator") -> Invoice:
+         approver="A. Operator", paid=False, paid_ts=None) -> Invoice:
     amount = round(sum(line_la(line) for line in lines) + tax, 2)
     return Invoice(id=id, brand=brand, region=region, vendor_id=v.id, vendor=v.name,
                    category=category, amount=amount, tax=tax, status=status,
-                   approver=approver, filed_ts=filed, lines=lines)
+                   approver=approver, filed_ts=filed, lines=lines,
+                   paid=paid, paid_ts=(paid_ts or (filed if paid else None)))
 
 
 def line_la(line: InvoiceLine) -> float:
@@ -85,23 +86,25 @@ def build_invoices() -> list[Invoice]:
     inv: list[Invoice] = []
 
     # --- the headline anomaly invoices (match the mockup) ---
+    # Already paid: a duplicate that was disbursed before audit → a recovery/clawback case.
     inv.append(_inv("INV-44871", "Stay Montana", "Mountain West", _vendor("v-summit"),
                     "Maintenance & repairs", [
         L("HVAC filter replacement", 12, 42.0),     # benchmark 28 → +50% overage
         L("Emergency call-out fee", 3, 185.0),       # duplicate of INV-44102
         L("Labor (hrs)", 14, 95.0),                  # in range
         L("Misc. parts", 1, 2591.0),                 # vague high line
-    ]))
+    ], paid=True, paid_ts="2026-06-27"))
     inv.append(_inv("INV-44102", "Stay Montana", "Mountain West", _vendor("v-summit"),
                     "Maintenance & repairs", [
         L("Emergency call-out fee", 3, 185.0),       # the original of the duplicate
         L("Labor (hrs)", 6, 95.0),
-    ], filed="2026-06-25", status="paid"))
+    ], filed="2026-06-25", paid=True, paid_ts="2026-06-25"))
 
+    # Already paid: off-contract overage that slipped through → recovery case.
     inv.append(_inv("INV-45012", "Gulf Coast Getaways", "Gulf", _vendor("v-cleanco"),
                     "Cleaning supplies", [
         L("All-purpose cleaner (case)", 40, 53.5),   # off-contract vendor + +49% unit
-    ]))
+    ], paid=True, paid_ts="2026-06-26"))
 
     inv.append(_inv("INV-45120", "Pristine Properties", "Southeast", _vendor("v-green"),
                     "Landscaping", [L("Mowing visit", 8, 170.0)]))
@@ -139,6 +142,7 @@ def build_invoices() -> list[Invoice]:
         ("Summit Stays", "Mountain West", "v-peak", "Maintenance & repairs", [L("Labor (hrs)", 7, 95.0)]),
     ]
     for i, (brand, region, vid, cat, lines) in enumerate(clean):
+        # Roughly half of routine clean invoices have already been paid in the normal cycle.
         inv.append(_inv(f"INV-460{i:02d}", brand, region, _vendor(vid), cat, lines,
-                        status="pending"))
+                        status="pending", paid=(i % 2 == 0), paid_ts="2026-06-24"))
     return inv

@@ -218,7 +218,7 @@ async function renderQueue(){
   const d=await api('/api/flags');
   el.innerHTML=`<div class="filters"><div style="margin-left:auto" class="muted small">${d.count} flagged · ${usdk(d.at_risk)} at risk</div></div>
   <div class="card"><div class="bd" style="padding:0"><table><thead><tr><th></th><th>Vendor</th><th>Brand · region</th><th>Category</th><th>Amount</th><th>Anomaly</th><th>Conf.</th><th>Recommended</th><th>Status</th></tr></thead>
-  <tbody>${d.flags.length?d.flags.map(f=>`<tr class="clk" data-go="${f.invoice_id}"><td><span class="sevbar" style="background:${SEVCOL[f.severity]}"></span></td><td><b>${esc(f.vendor)}</b></td><td>${esc(f.brand)} · ${esc(f.region)}</td><td>${esc(f.category)}</td><td>${usd(f.amount)}</td><td><span class="pill ${SEVPILL[f.severity]}">${esc(f.anomaly_type)}</span></td><td>${f.confidence.toFixed(2)}</td><td class="muted">${esc(f.recommended_action)}</td><td><span class="pill p-gry">${esc(f.status)}</span></td></tr>`).join(''):'<tr><td colspan="9" class="empty">No open flags in your scope — all invoices cleared.</td></tr>'}</tbody></table></div></div>`;
+  <tbody>${d.flags.length?d.flags.map(f=>`<tr class="clk" data-go="${f.invoice_id}"><td><span class="sevbar" style="background:${SEVCOL[f.severity]}"></span></td><td><b>${esc(f.vendor)}</b>${f.paid?' <span class="pill p-amb" style="font-size:10px;padding:1px 6px">Paid</span>':''}</td><td>${esc(f.brand)} · ${esc(f.region)}</td><td>${esc(f.category)}</td><td>${usd(f.amount)}</td><td><span class="pill ${SEVPILL[f.severity]}">${esc(f.anomaly_type)}</span></td><td>${f.confidence.toFixed(2)}</td><td class="muted">${esc(f.recommended_action)}</td><td><span class="pill p-gry">${esc(f.status)}</span></td></tr>`).join(''):'<tr><td colspan="9" class="empty">No open flags in your scope — all invoices cleared.</td></tr>'}</tbody></table></div></div>`;
 }
 
 async function openInvoice(id){DETAIL_ID=id;nav('detail');}
@@ -232,22 +232,34 @@ async function renderDetail(){
   const sev=f?f.severity:'medium';
   const lines=d.lines.map(l=>`<tr><td>${esc(l.item)}</td><td>${l.qty}</td><td>${usd(l.unit_price)}</td><td>${usd(l.amount)}</td><td>${linePill(l.flag)}</td></tr>`).join('');
   const why=f?(a.rationale.map(r=>`<div>• ${esc(r)}</div>`).join('')):'<div class="muted">No anomalies — cleared.</div>';
-  const agentCard=a?`<div class="card" style="border-color:#CFE0F4"><div class="hd" style="background:var(--info-bg);border-radius:14px 14px 0 0"><h3 style="color:#1F4E86">Auditor agent recommendation</h3></div><div class="bd">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span class="pill ${SEVPILL[sev]}">${esc(a.action)}</span><span class="muted small">confidence ${a.confidence.toFixed(2)} · autonomy ${esc(a.autonomy)} · ${esc(a.model_version)}</span></div>
-      <p class="small" style="margin:0 0 12px">${esc(a.recommendation)}</p>
-      <div class="gate">Human approval required — money decision. The agent recommends a hold; AP executes.</div>
-      <label class="muted small" for="dispNote" style="display:block;margin:14px 0 5px">Reviewer note / reason <span style="opacity:.7">— why you agree or disagree (recommended when overriding the agent)</span></label>
-      <input id="dispNote" placeholder="e.g. pre-approved capital project — duplicate-looking but legitimate" style="width:100%;padding:9px 11px;border:1px solid #D9E0EA;border-radius:8px;font:inherit;font-size:13px;outline:0;box-sizing:border-box"/>
-      <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap">
-        <button class="btn danger" onclick="disp('reject')">Reject lines</button>
+  const paid=!!inv.paid;
+  const actBtns=paid
+    ? `<button class="btn danger" onclick="disp('recover')" title="Confirm the anomaly and open a recovery / clawback case">Flag for recovery</button>
+        <button class="btn" onclick="disp('escalate')">Escalate</button>
+        <button class="btn" onclick="disp('dismiss')" title="Disagree with the flag — record as a false positive">Not an anomaly</button>`
+    : `<button class="btn danger" onclick="disp('reject')">Reject lines</button>
         <button class="btn" onclick="disp('hold')">Place hold</button>
         <button class="btn" onclick="disp('escalate')">Escalate</button>
         <button class="btn primary" onclick="disp('approve')">Approve &amp; pay</button>
-        <button class="btn" onclick="disp('dismiss')" title="Disagree with the flag — record as a false positive">Not an anomaly</button>
+        <button class="btn" onclick="disp('dismiss')" title="Disagree with the flag — record as a false positive">Not an anomaly</button>`;
+  const gateTxt=paid
+    ? 'Already paid — funds have left the account. Reject / hold no longer apply; confirming the anomaly opens a recovery (clawback) case. A human owns the recovery decision.'
+    : 'Human approval required — money decision. The agent recommends a hold; AP executes.';
+  const learnNote=paid
+    ? '<b>Recovery still learns.</b> Confirming the anomaly (recover) or dismissing it is captured as labelled training feedback — so detection keeps improving even on invoices that already cleared.'
+    : '<b>Not an anomaly</b> records this flag as a false positive. Every disposition — agree or disagree — is captured as labelled training feedback; the model learns from it and flags this pattern more accurately over time.';
+  const agentCard=a?`<div class="card" style="border-color:#CFE0F4"><div class="hd" style="background:var(--info-bg);border-radius:14px 14px 0 0"><h3 style="color:#1F4E86">Auditor agent recommendation</h3>${paid?'<span class="pill p-amb" style="margin-left:8px">Recovery case</span>':''}</div><div class="bd">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span class="pill ${SEVPILL[sev]}">${esc(a.action)}</span><span class="muted small">confidence ${a.confidence.toFixed(2)} · autonomy ${esc(a.autonomy)} · ${esc(a.model_version)}</span></div>
+      <p class="small" style="margin:0 0 12px">${esc(a.recommendation)}</p>
+      <div class="gate">${gateTxt}</div>
+      <label class="muted small" for="dispNote" style="display:block;margin:14px 0 5px">Reviewer note / reason <span style="opacity:.7">— why you agree or disagree (recommended when overriding the agent)</span></label>
+      <input id="dispNote" placeholder="e.g. pre-approved capital project — duplicate-looking but legitimate" style="width:100%;padding:9px 11px;border:1px solid #D9E0EA;border-radius:8px;font:inherit;font-size:13px;outline:0;box-sizing:border-box"/>
+      <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap">
+        ${actBtns}
       </div>
-      <div class="note" style="margin-top:12px"><span>↺</span><div><b>Not an anomaly</b> records this flag as a false positive. Every disposition — agree or disagree — is captured as labelled training feedback; the model learns from it and flags this pattern more accurately over time.</div></div></div></div>`:'<div class="card"><div class="bd"><span class="pill p-grn">Cleared</span> <span class="muted small">no anomalies detected</span></div></div>';
+      <div class="note" style="margin-top:12px"><span>↺</span><div>${learnNote}</div></div></div></div>`:'<div class="card"><div class="bd"><span class="pill p-grn">Cleared</span> <span class="muted small">no anomalies detected</span></div></div>';
   el.innerHTML=`<div class="row" style="align-items:stretch">
-    <div style="flex:1.5;min-width:340px" class="card"><div class="hd"><h3>Invoice ${esc(inv.id)}</h3>${f?`<span class="pill ${SEVPILL[sev]}" style="margin-left:8px">${esc(sev)} severity</span>`:''}<span class="mut" style="margin-left:auto">${esc(inv.status)}</span></div>
+    <div style="flex:1.5;min-width:340px" class="card"><div class="hd"><h3>Invoice ${esc(inv.id)}</h3>${f?`<span class="pill ${SEVPILL[sev]}" style="margin-left:8px">${esc(sev)} severity</span>`:''}<span class="pill ${paid?'p-amb':'p-grn'}" style="margin-left:8px">${paid?'Paid'+(inv.paid_ts?' · '+esc(inv.paid_ts):''):'Not yet paid'}</span><span class="mut" style="margin-left:auto">${esc(inv.status)}</span></div>
       <div class="bd"><div class="row" style="gap:28px;margin-bottom:14px">
         <div><div class="muted small">Vendor</div><div style="font-weight:600">${esc(inv.vendor)}</div></div>
         <div><div class="muted small">Brand · region</div><div style="font-weight:600">${esc(inv.brand)} · ${esc(inv.region)}</div></div>
@@ -261,7 +273,7 @@ async function renderDetail(){
   <div class="card" style="margin-top:16px"><div class="hd"><h3>Audit trail</h3><span class="mut">every action logged · with model version</span></div><div class="bd">
     <ul class="tl">${d.audit.length?d.audit.map(e=>`<li><span class="tdot" style="background:${e.actor==='agent'?'var(--info)':e.actor==='human'?'var(--navy-2)':'var(--faint)'}"></span><div><b>${esc(e.actor_id||e.actor)}</b> ${esc(e.action)} <span class="muted">· ${esc((e.ts||'').slice(0,16).replace('T',' '))}${e.model_version?' · '+esc(e.model_version):''}</span>${e.after&&e.after.note?`<div class="muted small" style="margin-top:2px">“${esc(e.after.note)}”</div>`:''}</div></li>`).join(''):'<li class="muted">No events yet.</li>'}</ul></div></div>`;
 }
-const DISP_MSG={approve:'Approved & paid',reject:'Lines rejected',hold:'Hold placed',escalate:'Escalated',dismiss:'Marked not an anomaly — captured as training feedback'};
+const DISP_MSG={approve:'Approved & paid',reject:'Lines rejected',hold:'Hold placed',escalate:'Escalated',dismiss:'Marked not an anomaly — captured as training feedback',recover:'Recovery case opened — clawback initiated'};
 async function disp(action){
   const noteEl=$('#dispNote'); const note=noteEl?noteEl.value.trim():'';
   try{await post('/api/invoices/'+DETAIL_ID+'/disposition',{action,note});
