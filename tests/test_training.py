@@ -21,6 +21,16 @@ def test_eval_metrics_from_dispositions():
     assert ev["per_type"].get(f["anomaly_type"]) == 1.0
 
 
+def test_dismiss_is_a_false_positive_label():
+    # A reviewer disagreeing ("not an anomaly") teaches the model the flag was wrong.
+    f = _flag()
+    record_disposition(f["id"], f["invoice_id"], "kyle-hq", "dismiss",
+                       model_version=f["model_version"])
+    ev = trainer.eval_metrics()
+    assert ev["false_positives"] >= 1
+    assert ev["per_type"].get(f["anomaly_type"]) == 0.0
+
+
 def test_finetune_promotes_when_it_beats_champion_and_clears_bar():
     f = _flag()
     # a batch of confirmations → enough uplift to clear the bar

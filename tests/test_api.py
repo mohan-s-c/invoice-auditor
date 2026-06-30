@@ -47,6 +47,19 @@ def test_disposition_records_label_and_updates_status():
     assert det["flag"]["status"] == "rejected"
 
 
+def test_dismiss_records_false_positive_with_reason():
+    # The reviewer disagrees with the flag ("not an anomaly") and gives a reason.
+    inv = "INV-44871"  # Summit duplicate flag
+    out = client.post(f"/api/invoices/{inv}/disposition",
+                      json={"action": "dismiss",
+                            "note": "pre-approved capital project — not a duplicate"}).json()
+    assert out["status"] == "cleared"
+    assert out["labels"].get("dismiss", 0) >= 1
+    det = client.get(f"/api/invoices/{inv}").json()
+    # the reviewer's reason is captured in the immutable audit trail
+    assert any((e.get("after") or {}).get("note") for e in det["audit"])
+
+
 def test_vendors_notifications_autonomy():
     v = client.get("/api/vendors").json()
     assert v["vendors"] and 0 <= v["off_contract_pct"] <= 100

@@ -19,8 +19,10 @@ from libs.common.config import settings
 from . import registry
 
 # A disposition that confirms the flag was a true anomaly (agreement) vs a false positive.
+# "dismiss" is the reviewer explicitly disagreeing with the flag (not an anomaly); together
+# with "approve" it is a false-positive label that teaches the model to flag the pattern less.
 _CONFIRM = {"reject", "hold", "escalate"}
-_FALSE_POS = {"approve"}
+_FALSE_POS = {"approve", "dismiss"}
 
 
 def eval_metrics() -> dict:

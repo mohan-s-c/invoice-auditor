@@ -24,7 +24,7 @@ from services.training import registry, trainer
 
 _STATIC = Path(__file__).resolve().parent / "static"
 _ACTION_STATUS = {"approve": "approved", "reject": "rejected", "hold": "held",
-                  "escalate": "escalated"}
+                  "escalate": "escalated", "dismiss": "cleared"}
 
 
 @asynccontextmanager
