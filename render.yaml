@@ -7,7 +7,7 @@ services:
     runtime: python
     plan: free
     region: oregon
-    branch: feat/invoice-auditor-build
+    branch: main
     buildCommand: pip install -e .
     startCommand: uvicorn services.dashboard_api.app:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
