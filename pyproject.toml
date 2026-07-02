@@ -3,17 +3,20 @@ name = "invoice-auditor"
 version = "0.1.0"
 description = "Invoice Auditor — proactive cross-brand invoice anomaly detection (AI app + agent)"
 requires-python = ">=3.12"
+# Pinned to compatible-release (~=): patch updates (bug/security fixes) are allowed, but a
+# `pip install` can't silently jump to a newer minor/major and change behavior in production
+# without a deliberate version bump here. Versions below are what's tested (2026-07).
 dependencies = [
-  "fastapi>=0.111",
-  "uvicorn>=0.30",
-  "pydantic>=2.7",
-  "pydantic-settings>=2.3",
-  "httpx>=0.27",
-  "structlog>=24.1",
+  "fastapi~=0.138.0",
+  "uvicorn~=0.49.0",
+  "pydantic~=2.13.0",
+  "pydantic-settings~=2.14.0",
+  "httpx~=0.28.0",
+  "structlog~=26.1.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.5"]
+dev = ["pytest~=9.1.0", "ruff~=0.15.0"]
 # add when implementing real serving/training: vllm, peft, mlflow, scikit-learn, snowflake-connector
 
 [build-system]

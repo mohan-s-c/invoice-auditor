@@ -26,14 +26,19 @@ _CONFIG_KEY = "notify_thresholds"
 
 
 def get_thresholds() -> dict:
-    """Effective thresholds = defaults overlaid with any HQ-saved overrides (app_config)."""
+    """Effective thresholds = defaults overlaid with any HQ-saved overrides (app_config).
+
+    Always includes ``always_notify_severity`` so GET and PATCH return an identical shape —
+    the API layer can use one response model for both.
+    """
     from libs.common import db
     stored = db.get_config(_CONFIG_KEY) or {}
     cats = dict(DEFAULT_CATEGORY_DOLLAR_THRESHOLD)
     for k, v in (stored.get("categories") or {}).items():
         cats[k] = float(v)
     default = float(stored.get("default", DEFAULT_DOLLAR_THRESHOLD))
-    return {"categories": cats, "default": default}
+    return {"categories": cats, "default": default,
+            "always_notify_severity": sorted(ALWAYS_NOTIFY_SEVERITY)}
 
 
 def set_thresholds(categories: dict | None = None, default: float | None = None) -> dict:

@@ -1,5 +1,10 @@
+from fastapi.testclient import TestClient
+
+from services.dashboard_api.app import app
 from services.learning.capture import record_disposition
 from services.training import registry, trainer
+
+client = TestClient(app)
 
 
 def _flag():
@@ -54,6 +59,18 @@ def test_recover_is_a_confirmation_true_positive():
     assert ev["confirmed"] >= 1
     assert ev["false_positives"] == 0
     assert ev["per_type"].get(f["anomaly_type"]) == 1.0
+
+
+def test_rollback_with_no_prior_version_reports_not_rolled_back():
+    # A fresh seed has only the initial champion — nothing retired to roll back to. This is a
+    # different response shape (no champion/from, has reason) than a successful rollback, so
+    # it's exercised through the API to prove the response_model handles both branches.
+    r = client.post("/api/registry/rollback")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["rolled_back"] is False
+    assert body["champion"] is None and body["from"] is None
+    assert body["reason"]
 
 
 def test_finetune_promotes_when_it_beats_champion_and_clears_bar():

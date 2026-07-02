@@ -1,7 +1,13 @@
-"""Central settings (handoff §4). Offline-first defaults; see DECISIONS.md."""
+"""Central settings (handoff §4). Offline-first defaults; see DECISIONS.md.
+
+Mode/provider fields use ``Literal`` (not plain ``str``) so a typo'd env var (e.g.
+``AP_MODE=rmap``) fails fast at process startup with a clear pydantic validation error,
+instead of silently falling through to the default mode and misbehaving in production.
+"""
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -12,14 +18,14 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     # Local LLM (self-hosted Qwen). "offline" = deterministic, no GPU.
-    llm_provider: str = "offline"  # offline | oss
+    llm_provider: Literal["offline", "oss"] = "offline"
     oss_model_base_url: str = "http://localhost:11434/v1"
     oss_model_name: str = "qwen2.5:7b"
     # GUARDRAIL: financial/PII never leaves to an external model unless explicitly enabled.
     allow_external_model: bool = False
 
     # AP / invoicing tool (separate from TRACK).
-    ap_mode: str = "mock"  # mock | api | ramp
+    ap_mode: Literal["mock", "api", "ramp"] = "mock"
     ap_base_url: str = ""
     ap_api_key: str = ""
 
@@ -30,7 +36,7 @@ class Settings(BaseSettings):
 
     # Email notifications. "offline" = queue to the outbox, never send (default, safe).
     # GUARDRAIL: a real provider only sends when allow_external_email is explicitly true.
-    notify_provider: str = "offline"   # offline | graph | smtp
+    notify_provider: Literal["offline", "graph", "smtp"] = "offline"
     allow_external_email: bool = False
     notify_from: str = "invoice-auditor@awayday.example"
     # Microsoft Graph (M365) — client-credentials.

@@ -93,6 +93,19 @@ h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--m
 @keyframes sh{0%{opacity:.6}50%{opacity:1}100%{opacity:.6}}
 #toast{position:fixed;bottom:20px;right:20px;background:var(--text);color:#fff;padding:11px 15px;border-radius:10px;opacity:0;transition:opacity .2s;z-index:50}
 @media(max-width:1080px){.kpis{grid-template-columns:repeat(2,1fr)}.grid2,.grid2b,.opp{grid-template-columns:1fr}.app{grid-template-columns:64px 1fr}.brand b,.brand small,.nav a span,.nav .tag,.side .foot{display:none}.nav a{justify-content:center}}
+/* utility classes — replace repeated inline style="..." attributes (fw6/p0/etc. names match the existing terse convention above) */
+.fw6{font-weight:600}
+.p0{padding:0}
+.ml-auto{margin-left:auto}
+.f1{flex:1}
+.mt12{margin-top:12px}
+.mt14{margin-top:14px}
+.mt16{margin-top:16px}
+.ml8{margin-left:8px}
+.gap10{gap:10px}
+.h248{height:248px}
+.kv-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)}
+.thr-input{width:130px;padding:6px 9px;border:1px solid #D9E0EA;border-radius:7px;font:inherit;font-size:13px}
 </style>
 </head>
 <body>
@@ -191,12 +204,12 @@ async function renderDash(){
     <div class="kpi"><div class="l">Recoverable identified</div><div class="v">${usdk(k.recoverable)}</div><div class="d muted">across open flags</div></div>
   </div>
   <div class="grid2">
-    <div class="card"><div class="hd"><h3>Spend by category</h3></div><div class="bd"><div style="height:248px"><canvas id="catChart"></canvas></div></div></div>
-    <div class="card"><div class="hd"><h3>Anomalies by type</h3></div><div class="bd"><div style="height:248px"><canvas id="anomChart"></canvas></div></div></div>
+    <div class="card"><div class="hd"><h3>Spend by category</h3></div><div class="bd"><div class="h248"><canvas id="catChart"></canvas></div></div></div>
+    <div class="card"><div class="hd"><h3>Anomalies by type</h3></div><div class="bd"><div class="h248"><canvas id="anomChart"></canvas></div></div></div>
   </div>
-  <div class="grid2" style="margin-top:16px">
-    <div class="card"><div class="hd"><h3>Recent flags</h3><span class="mut">routed to you &amp; the regional president</span><a class="btn ghost small" style="margin-left:auto" data-s="queue">View all →</a></div>
-      <div class="bd" style="padding:0"><table><thead><tr><th></th><th>Vendor</th><th>Brand</th><th>Category</th><th>Amount</th><th>Anomaly</th><th>Conf.</th></tr></thead>
+  <div class="grid2 mt16">
+    <div class="card"><div class="hd"><h3>Recent flags</h3><span class="mut">routed to you &amp; the regional president</span><a class="btn ghost small ml-auto" data-s="queue">View all →</a></div>
+      <div class="bd p0"><table><thead><tr><th></th><th>Vendor</th><th>Brand</th><th>Category</th><th>Amount</th><th>Anomaly</th><th>Conf.</th></tr></thead>
       <tbody>${d.recent_flags.length?d.recent_flags.map(f=>flagRow(f,true)).join(''):'<tr><td colspan="7" class="empty">No open flags — all invoices cleared.</td></tr>'}</tbody></table></div></div>
     <div class="card"><div class="hd"><h3>Spend by region</h3></div><div class="bd">${d.regions.map(regBar).join('')||'<div class="empty">No spend in scope.</div>'}</div></div>
   </div>`;
@@ -217,8 +230,8 @@ function drawCharts(d){
 async function renderQueue(){
   const el=$('#queue'); el.innerHTML='<div class="empty">Loading…</div>';
   const d=await api('/api/flags');
-  el.innerHTML=`<div class="filters"><div style="margin-left:auto" class="muted small">${d.count} flagged · ${usdk(d.at_risk)} at risk</div></div>
-  <div class="card"><div class="bd" style="padding:0"><table><thead><tr><th></th><th>Vendor</th><th>Brand · region</th><th>Category</th><th>Amount</th><th>Anomaly</th><th>Conf.</th><th>Recommended</th><th>Status</th></tr></thead>
+  el.innerHTML=`<div class="filters"><div class="muted small ml-auto">${d.count} flagged · ${usdk(d.at_risk)} at risk</div></div>
+  <div class="card"><div class="bd p0"><table><thead><tr><th></th><th>Vendor</th><th>Brand · region</th><th>Category</th><th>Amount</th><th>Anomaly</th><th>Conf.</th><th>Recommended</th><th>Status</th></tr></thead>
   <tbody>${d.flags.length?d.flags.map(f=>`<tr class="clk" data-go="${f.invoice_id}"><td><span class="sevbar" style="background:${SEVCOL[f.severity]}"></span></td><td><b>${esc(f.vendor)}</b>${f.paid?' <span class="pill p-amb" style="font-size:10px;padding:1px 6px">Paid</span>':''}</td><td>${esc(f.brand)} · ${esc(f.region)}</td><td>${esc(f.category)}</td><td>${usd(f.amount)}</td><td><span class="pill ${SEVPILL[f.severity]}">${esc(f.anomaly_type)}</span></td><td>${f.confidence.toFixed(2)}</td><td class="muted">${esc(f.recommended_action)}</td><td><span class="pill p-gry">${esc(f.status)}</span></td></tr>`).join(''):'<tr><td colspan="9" class="empty">No open flags in your scope — all invoices cleared.</td></tr>'}</tbody></table></div></div>`;
 }
 
@@ -249,7 +262,7 @@ async function renderDetail(){
   const learnNote=paid
     ? '<b>Recovery still learns.</b> Confirming the anomaly (recover) or dismissing it is captured as labelled training feedback — so detection keeps improving even on invoices that already cleared.'
     : '<b>Not an anomaly</b> records this flag as a false positive. Every disposition — agree or disagree — is captured as labelled training feedback; the model learns from it and flags this pattern more accurately over time.';
-  const agentCard=a?`<div class="card" style="border-color:#CFE0F4"><div class="hd" style="background:var(--info-bg);border-radius:14px 14px 0 0"><h3 style="color:#1F4E86">Auditor agent recommendation</h3>${paid?'<span class="pill p-amb" style="margin-left:8px">Recovery case</span>':''}</div><div class="bd">
+  const agentCard=a?`<div class="card" style="border-color:#CFE0F4"><div class="hd" style="background:var(--info-bg);border-radius:14px 14px 0 0"><h3 style="color:#1F4E86">Auditor agent recommendation</h3>${paid?'<span class="pill p-amb ml8">Recovery case</span>':''}</div><div class="bd">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span class="pill ${SEVPILL[sev]}">${esc(a.action)}</span><span class="muted small">confidence ${a.confidence.toFixed(2)} · autonomy ${esc(a.autonomy)} · ${esc(a.model_version)}</span></div>
       <p class="small" style="margin:0 0 12px">${esc(a.recommendation)}</p>
       <div class="gate">${gateTxt}</div>
@@ -258,20 +271,20 @@ async function renderDetail(){
       <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap">
         ${actBtns}
       </div>
-      <div class="note" style="margin-top:12px"><span>↺</span><div>${learnNote}</div></div></div></div>`:'<div class="card"><div class="bd"><span class="pill p-grn">Cleared</span> <span class="muted small">no anomalies detected</span></div></div>';
+      <div class="note mt12"><span>↺</span><div>${learnNote}</div></div></div></div>`:'<div class="card"><div class="bd"><span class="pill p-grn">Cleared</span> <span class="muted small">no anomalies detected</span></div></div>';
   el.innerHTML=`<div class="row" style="align-items:stretch">
-    <div style="flex:1.5;min-width:340px" class="card"><div class="hd"><h3>Invoice ${esc(inv.id)}</h3>${f?`<span class="pill ${SEVPILL[sev]}" style="margin-left:8px">${esc(sev)} severity</span>`:''}<span class="pill ${paid?'p-amb':'p-grn'}" style="margin-left:8px">${paid?'Paid'+(inv.paid_ts?' · '+esc(inv.paid_ts):''):'Not yet paid'}</span><span class="mut" style="margin-left:auto">${esc(inv.status)}</span></div>
+    <div style="flex:1.5;min-width:340px" class="card"><div class="hd"><h3>Invoice ${esc(inv.id)}</h3>${f?`<span class="pill ${SEVPILL[sev]} ml8">${esc(sev)} severity</span>`:''}<span class="pill ${paid?'p-amb':'p-grn'} ml8">${paid?'Paid'+(inv.paid_ts?' · '+esc(inv.paid_ts):''):'Not yet paid'}</span><span class="mut ml-auto">${esc(inv.status)}</span></div>
       <div class="bd"><div class="row" style="gap:28px;margin-bottom:14px">
-        <div><div class="muted small">Vendor</div><div style="font-weight:600">${esc(inv.vendor)}</div></div>
-        <div><div class="muted small">Brand · region</div><div style="font-weight:600">${esc(inv.brand)} · ${esc(inv.region)}</div></div>
-        <div><div class="muted small">Amount</div><div style="font-weight:600">${usd(inv.amount)}</div></div>
-        <div><div class="muted small">Category</div><div style="font-weight:600">${esc(inv.category)}</div></div></div>
+        <div><div class="muted small">Vendor</div><div class="fw6">${esc(inv.vendor)}</div></div>
+        <div><div class="muted small">Brand · region</div><div class="fw6">${esc(inv.brand)} · ${esc(inv.region)}</div></div>
+        <div><div class="muted small">Amount</div><div class="fw6">${usd(inv.amount)}</div></div>
+        <div><div class="muted small">Category</div><div class="fw6">${esc(inv.category)}</div></div></div>
         <table><thead><tr><th>Line item</th><th>Qty</th><th>Unit price</th><th>Amount</th><th></th></tr></thead><tbody>${lines}</tbody></table></div></div>
     <div style="flex:1;min-width:300px;display:flex;flex-direction:column;gap:16px">
       <div class="card"><div class="hd"><h3>Why it was flagged</h3></div><div class="bd"><div class="small" style="display:flex;flex-direction:column;gap:8px">${why}</div></div></div>
       ${agentCard}
     </div></div>
-  <div class="card" style="margin-top:16px"><div class="hd"><h3>Audit trail</h3><span class="mut">every action logged · with model version</span></div><div class="bd">
+  <div class="card mt16"><div class="hd"><h3>Audit trail</h3><span class="mut">every action logged · with model version</span></div><div class="bd">
     <ul class="tl">${d.audit.length?d.audit.map(e=>`<li><span class="tdot" style="background:${e.actor==='agent'?'var(--info)':e.actor==='human'?'var(--navy-2)':'var(--faint)'}"></span><div><b>${esc(e.actor_id||e.actor)}</b> ${esc(e.action)} <span class="muted">· ${esc((e.ts||'').slice(0,16).replace('T',' '))}${e.model_version?' · '+esc(e.model_version):''}</span>${e.after&&e.after.note?`<div class="muted small" style="margin-top:2px">“${esc(e.after.note)}”</div>`:''}</div></li>`).join(''):'<li class="muted">No events yet.</li>'}</ul></div></div>`;
 }
 const DISP_MSG={approve:'Approved & paid',reject:'Lines rejected',hold:'Hold placed',escalate:'Escalated',dismiss:'Marked not an anomaly — captured as training feedback',recover:'Recovery case opened — clawback initiated'};
@@ -287,11 +300,11 @@ async function renderVendors(){
   const el=$('#vendors'); el.innerHTML='<div class="empty">Loading…</div>';
   const d=await api('/api/vendors');
   const cp={off:'<span class="pill p-red">Off-contract</span>',regional:'<span class="pill p-amb">Regional</span>',hq:'<span class="pill p-grn">HQ national</span>'};
-  el.innerHTML=`<div class="filters"><div style="margin-left:auto" class="muted small">${d.vendors.length} vendors · ${d.off_contract_pct}% off-contract</div></div>
-  <div class="card"><div class="bd" style="padding:0"><table><thead><tr><th>Vendor</th><th>Category</th><th>Region</th><th>Spend (YTD)</th><th>Contract</th><th>Avg vs benchmark</th></tr></thead><tbody>
+  el.innerHTML=`<div class="filters"><div class="muted small ml-auto">${d.vendors.length} vendors · ${d.off_contract_pct}% off-contract</div></div>
+  <div class="card"><div class="bd p0"><table><thead><tr><th>Vendor</th><th>Category</th><th>Region</th><th>Spend (YTD)</th><th>Contract</th><th>Avg vs benchmark</th></tr></thead><tbody>
   ${d.vendors.map(v=>`<tr><td><b>${esc(v.name)}</b></td><td>${esc(v.category)}</td><td class="muted">${esc(v.region||'—')}</td><td>${usdk(v.spend_ytd)}</td><td>${cp[v.contract]||v.contract}</td><td class="${v.vs_benchmark>0?'down':'up'}">${v.vs_benchmark>0?'+':''}${Math.round(v.vs_benchmark*100)}%</td></tr>`).join('')}
   </tbody></table></div></div>
-  <div class="note" style="margin-top:14px"><span>i</span><div>Off-contract and rate-variance flags are computed against the vendor master and HQ rate cards (mock until the AP-tool feed is confirmed).</div></div>`;
+  <div class="note mt14"><span>i</span><div>Off-contract and rate-variance flags are computed against the vendor master and HQ rate cards (mock until the AP-tool feed is confirmed).</div></div>`;
 }
 
 async function renderNotifs(){
@@ -302,13 +315,13 @@ async function renderNotifs(){
   const stPill=s=>s==='sent'?'<span class="pill p-grn">sent</span>':s==='queued'?'<span class="pill p-amb">queued</span>':'<span class="pill p-red">failed</span>';
   el.innerHTML=`<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:6px"><div class="muted small">${d.unread} open · routed to Kyle (HQ) and the responsible regional president</div><button class="btn ghost small">Mark all read</button></div>
   <div class="card"><div class="bd" style="padding:6px 0"><ul class="tl" style="padding:0 10px">
-  ${d.items.length?d.items.map(n=>`<li><span class="tdot" style="background:${SEVCOL[n.severity]}"></span><div style="flex:1"><b>${esc(n.severity)} · ${esc(n.anomaly_type)}</b> — ${esc(n.vendor)} ${usd(n.amount)} (${esc(n.brand)}). <span class="muted">${n.recoverable?usd(n.recoverable)+' recoverable.':esc(n.recommended_action)+'.'}</span><div class="muted small">${esc(n.route)}</div></div><button class="btn small" data-go="${n.invoice_id}">View</button></li>`).join(''):'<li class="empty">No open notifications — you\'re all caught up.</li>'}
+  ${d.items.length?d.items.map(n=>`<li><span class="tdot" style="background:${SEVCOL[n.severity]}"></span><div class="f1"><b>${esc(n.severity)} · ${esc(n.anomaly_type)}</b> — ${esc(n.vendor)} ${usd(n.amount)} (${esc(n.brand)}). <span class="muted">${n.recoverable?usd(n.recoverable)+' recoverable.':esc(n.recommended_action)+'.'}</span><div class="muted small">${esc(n.route)}</div></div><button class="btn small" data-go="${n.invoice_id}">View</button></li>`).join(''):'<li class="empty">No open notifications — you\'re all caught up.</li>'}
   </ul></div></div>
   <div class="row" style="justify-content:space-between;align-items:center;margin:18px 0 6px"><h2 class="sec" style="margin:0">Email notifications — outbox</h2><div class="muted small">channel: ${esc(chan)} · ${ob.sent} sent · ${ob.queued} queued${isHQ?' · <button class="btn small" onclick="runDispatch()">Run dispatch</button>':''}</div></div>
-  <div class="card"><div class="bd" style="padding:0"><table><thead><tr><th>Recipient</th><th>Severity</th><th>Anomaly</th><th>Subject</th><th>Why</th><th>Status</th></tr></thead><tbody>
+  <div class="card"><div class="bd p0"><table><thead><tr><th>Recipient</th><th>Severity</th><th>Anomaly</th><th>Subject</th><th>Why</th><th>Status</th></tr></thead><tbody>
   ${ob.items.length?ob.items.map(o=>`<tr><td><b>${esc(o.recipient_name)}</b> <span class="muted small">${esc(o.kind)} · ${esc(o.recipient_email)}</span></td><td><span class="pill ${SEVPILL[o.severity]}">${esc(o.severity)}</span></td><td>${esc(o.anomaly_type)}</td><td class="muted small">${esc(o.subject)}</td><td class="muted small">${esc(o.reason)}</td><td>${stPill(o.status)}</td></tr>`).join(''):'<tr><td colspan="6" class="empty">No notifications routed yet.</td></tr>'}
   </tbody></table></div></div>
-  <div class="note" style="margin-top:12px"><span>i</span><div>Notifications fire when a flag is high/critical severity or clears its category dollar threshold, routed to the region's president (critical also copies the Ops head). <b>${ob.external_email_enabled?'External email is ENABLED.':'Offline mode — messages are queued, not sent.'}</b> Swap to Microsoft 365 or SMTP via env config.</div></div>`;
+  <div class="note mt12"><span>i</span><div>Notifications fire when a flag is high/critical severity or clears its category dollar threshold, routed to the region's president (critical also copies the Ops head). <b>${ob.external_email_enabled?'External email is ENABLED.':'Offline mode — messages are queued, not sent.'}</b> Swap to Microsoft 365 or SMTP via env config.</div></div>`;
 }
 async function runDispatch(){
   try{const r=await post('/api/notify/dispatch');toast(`Dispatch: ${r.sent} sent · ${r.queued} queued · ${r.skipped_below_threshold} below threshold`);renderNotifs();}
@@ -321,20 +334,20 @@ async function renderSettings(){
   const isHQ=me.role&&me.role.region===null;
   const lvlPill=l=>l.startsWith('L3')?'p-grn':l.startsWith('L2')?'p-blu':'p-gry';
   const stPill={on:'<span class="pill p-grn">● On</span>',promoting:'<span class="pill p-amb">◐ Promoting</span>',learning:'<span class="pill p-gry">○ Learning</span>'};
-  el.innerHTML=`<div class="card"><div class="hd"><h3>Autonomy by anomaly type</h3><span class="mut">auto-act unlocks at sustained precision ≥ 0.95 (low-value, reversible)</span></div><div class="bd" style="padding:0">
+  el.innerHTML=`<div class="card"><div class="hd"><h3>Autonomy by anomaly type</h3><span class="mut">auto-act unlocks at sustained precision ≥ 0.95 (low-value, reversible)</span></div><div class="bd p0">
   <table><thead><tr><th>Anomaly type</th><th>Level</th><th>Precision (30d)</th><th>Auto-action ≤</th><th>Status</th></tr></thead><tbody>
   ${d.autonomy.map(a=>`<tr><td>${esc(a.type)}</td><td><span class="pill ${lvlPill(a.level)}">${esc(a.level)}</span></td><td>${a.precision.toFixed(2)}</td><td>${a.auto_max?usd(a.auto_max):'—'}</td><td>${stPill[a.status]||a.status}</td></tr>`).join('')}
   </tbody></table></div></div>
-  <div class="grid2b" style="margin-top:16px">
-    <div class="card"><div class="hd"><h3>Notification routing</h3></div><div class="bd small">${d.routing.map(r=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)"><span>${esc(r.severity)}</span><span class="muted">${esc(r.rule)}</span></div>`).join('')}</div></div>
-    <div class="card"><div class="hd"><h3>Guardrails</h3><span class="mut">policy</span></div><div class="bd small">${d.guardrails.map(g=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)"><span>${esc(g.policy)}</span><span>${esc(g.value)}</span></div>`).join('')}</div></div>
+  <div class="grid2b mt16">
+    <div class="card"><div class="hd"><h3>Notification routing</h3></div><div class="bd small">${d.routing.map(r=>`<div class="kv-row"><span>${esc(r.severity)}</span><span class="muted">${esc(r.rule)}</span></div>`).join('')}</div></div>
+    <div class="card"><div class="hd"><h3>Guardrails</h3><span class="mut">policy</span></div><div class="bd small">${d.guardrails.map(g=>`<div class="kv-row"><span>${esc(g.policy)}</span><span>${esc(g.value)}</span></div>`).join('')}</div></div>
   </div>
-  <div class="gate" style="margin-top:14px">Promotion to auto-act is gated by sustained precision and is reversible — any anomaly type can be rolled back to recommend-only with one click.</div>
+  <div class="gate mt14">Promotion to auto-act is gated by sustained precision and is reversible — any anomaly type can be rolled back to recommend-only with one click.</div>
   <h2 class="sec">Notification thresholds</h2>
-  <div class="card"><div class="hd"><h3>Per-category dollar thresholds</h3><span class="mut">a flag emails the region's RP when it's high/critical, or its amount clears the category threshold</span>${isHQ?'<button class="btn small" style="margin-left:auto" onclick="saveThresholds()">Save thresholds</button>':'<span class="mut" style="margin-left:auto">HQ only</span>'}</div><div class="bd" style="padding:0">
+  <div class="card"><div class="hd"><h3>Per-category dollar thresholds</h3><span class="mut">a flag emails the region's RP when it's high/critical, or its amount clears the category threshold</span>${isHQ?'<button class="btn small ml-auto" onclick="saveThresholds()">Save thresholds</button>':'<span class="mut ml-auto">HQ only</span>'}</div><div class="bd p0">
   <table><thead><tr><th>Category</th><th>Threshold ($)</th></tr></thead><tbody>
-  ${Object.entries(pol.categories).map(([c,v])=>`<tr><td>${esc(c)}</td><td><input class="thr" data-cat="${esc(c)}" type="number" min="0" step="50" value="${v}" ${isHQ?'':'disabled'} style="width:130px;padding:6px 9px;border:1px solid #D9E0EA;border-radius:7px;font:inherit;font-size:13px"/></td></tr>`).join('')}
-  <tr><td><b>Default</b> <span class="muted small">(any other category)</span></td><td><input id="thrDefault" type="number" min="0" step="50" value="${pol.default}" ${isHQ?'':'disabled'} style="width:130px;padding:6px 9px;border:1px solid #D9E0EA;border-radius:7px;font:inherit;font-size:13px"/></td></tr>
+  ${Object.entries(pol.categories).map(([c,v])=>`<tr><td>${esc(c)}</td><td><input class="thr thr-input" data-cat="${esc(c)}" type="number" min="0" step="50" value="${v}" ${isHQ?'':'disabled'}/></td></tr>`).join('')}
+  <tr><td><b>Default</b> <span class="muted small">(any other category)</span></td><td><input id="thrDefault" class="thr-input" type="number" min="0" step="50" value="${pol.default}" ${isHQ?'':'disabled'}/></td></tr>
   </tbody></table></div>
   <div class="bd" style="padding-top:0"><div class="note"><span>i</span><div>Always-notify severities: <b>${pol.always_notify_severity.join(', ')}</b> (emailed regardless of amount). Changes are saved to policy and apply on the next dispatch.</div></div></div></div>
   <h2 class="sec">Self-learning — model registry</h2>
@@ -342,15 +355,15 @@ async function renderSettings(){
     <span style="margin-left:auto;display:flex;gap:8px"><button class="btn small" onclick="runFinetune()">Run fine-tune</button><button class="btn small ghost" onclick="rollbackModel()">Roll back</button></span></div>
     <div class="bd">
     <div class="row" style="gap:28px;margin-bottom:12px">
-      <div><div class="muted small">Champion</div><div style="font-weight:600">${esc(reg.champion?reg.champion.version:'—')}</div></div>
-      <div><div class="muted small">Precision (overall)</div><div style="font-weight:600">${reg.champion?reg.champion.precision_overall.toFixed(2):'—'}</div></div>
-      <div><div class="muted small">Labels captured</div><div style="font-weight:600">${reg.eval.labels}</div></div>
-      <div><div class="muted small">Promotion bar</div><div style="font-weight:600">≥ ${reg.bar.toFixed(2)}</div></div>
+      <div><div class="muted small">Champion</div><div class="fw6">${esc(reg.champion?reg.champion.version:'—')}</div></div>
+      <div><div class="muted small">Precision (overall)</div><div class="fw6">${reg.champion?reg.champion.precision_overall.toFixed(2):'—'}</div></div>
+      <div><div class="muted small">Labels captured</div><div class="fw6">${reg.eval.labels}</div></div>
+      <div><div class="muted small">Promotion bar</div><div class="fw6">≥ ${reg.bar.toFixed(2)}</div></div>
     </div>
     <table><thead><tr><th>Version</th><th>Status</th><th>Precision</th><th>Labels used</th><th>Created</th></tr></thead><tbody>
     ${reg.versions.map(v=>`<tr><td class="mono">${esc(v.version)}</td><td>${v.status==='champion'?'<span class="pill p-grn">champion</span>':v.status==='candidate'?'<span class="pill p-blu">candidate</span>':'<span class="pill p-gry">retired</span>'}</td><td>${(v.precision_overall||0).toFixed(2)}</td><td>${v.labels_used}</td><td class="muted small">${esc((v.created_ts||'').slice(0,16).replace('T',' '))}</td></tr>`).join('')}
     </tbody></table>
-    <div class="note" style="margin-top:12px"><span>i</span><div>All training is local (self-hosted Qwen) — no data leaves the boundary. A candidate is promoted only if it beats the champion and clears the precision bar; the prior version is retained for instant rollback. (Fine-tune is simulated in this offline build.)</div></div>
+    <div class="note mt12"><span>i</span><div>All training is local (self-hosted Qwen) — no data leaves the boundary. A candidate is promoted only if it beats the champion and clears the precision bar; the prior version is retained for instant rollback. (Fine-tune is simulated in this offline build.)</div></div>
   </div></div>`;
 }
 async function runFinetune(){
@@ -376,20 +389,20 @@ async function renderProc(){
   const d=await api('/api/procurement');
   el.innerHTML=`<div class="note" style="margin-bottom:16px"><span>★</span><div>Future capability (Phase 3). Opportunities below are illustrative — generated from category spend + supplier market research.</div></div>
   <div class="opp">${d.opportunities.map(o=>`<div class="card"><div class="bd"><div class="muted small">${esc(o.title)}</div><div class="bignum" style="margin:6px 0">${usdk(o.amount)}</div><div class="small muted">${esc(o.note)}</div><div style="margin-top:10px"><span class="pill p-blu">${esc(o.tag)}</span></div></div></div>`).join('')}</div>
-  <div class="card" style="margin-top:16px"><div class="hd"><h3>Supplier benchmark — HVAC service (Mountain West)</h3></div><div class="bd" style="padding:0"><table><thead><tr><th>Supplier</th><th>Avg unit cost</th><th>Used by</th><th>On contract</th><th>vs HQ rate</th></tr></thead><tbody>
+  <div class="card mt16"><div class="hd"><h3>Supplier benchmark — HVAC service (Mountain West)</h3></div><div class="bd p0"><table><thead><tr><th>Supplier</th><th>Avg unit cost</th><th>Used by</th><th>On contract</th><th>vs HQ rate</th></tr></thead><tbody>
   ${d.benchmark.map(b=>`<tr><td>${esc(b.supplier)}</td><td>${usd(b.unit)}</td><td>${esc(b.used_by)}</td><td>${b.on_contract==='Yes'?'<span class="pill p-grn">Yes</span>':b.on_contract==='Regional'?'<span class="pill p-amb">Regional</span>':'<span class="pill p-red">No</span>'}</td><td class="${b.vs_hq.startsWith('+')?'down':'up'}">${esc(b.vs_hq)}</td></tr>`).join('')}
   </tbody></table></div></div>`;
 }
 
 function renderDS(){
   $('#ds').innerHTML=`<h2 class="sec">Color — semantic</h2><div class="row">
-    <div class="card" style="flex:1"><div class="bd" style="background:var(--navy);color:#fff;border-radius:14px">Navy / brand</div></div>
-    <div class="card" style="flex:1"><div class="bd" style="background:var(--primary);color:#fff;border-radius:14px">Primary</div></div>
-    <div class="card" style="flex:1"><div class="bd" style="background:var(--success);color:#fff;border-radius:14px">Success / clear</div></div>
-    <div class="card" style="flex:1"><div class="bd" style="background:var(--warning);color:#fff;border-radius:14px">Warning / flag</div></div>
-    <div class="card" style="flex:1"><div class="bd" style="background:var(--danger);color:#fff;border-radius:14px">Danger / reject</div></div></div>
-  <h2 class="sec">Status pills</h2><div class="row" style="gap:10px"><span class="pill p-red">Critical</span><span class="pill p-amb">High</span><span class="pill p-blu">Medium</span><span class="pill p-grn">Cleared</span><span class="pill p-gry">Learning</span></div>
-  <h2 class="sec">Buttons</h2><div class="row" style="gap:10px"><button class="btn primary">Primary</button><button class="btn">Secondary</button><button class="btn danger">Danger</button><button class="btn ghost">Ghost</button></div>
+    <div class="card f1"><div class="bd" style="background:var(--navy);color:#fff;border-radius:14px">Navy / brand</div></div>
+    <div class="card f1"><div class="bd" style="background:var(--primary);color:#fff;border-radius:14px">Primary</div></div>
+    <div class="card f1"><div class="bd" style="background:var(--success);color:#fff;border-radius:14px">Success / clear</div></div>
+    <div class="card f1"><div class="bd" style="background:var(--warning);color:#fff;border-radius:14px">Warning / flag</div></div>
+    <div class="card f1"><div class="bd" style="background:var(--danger);color:#fff;border-radius:14px">Danger / reject</div></div></div>
+  <h2 class="sec">Status pills</h2><div class="row gap10"><span class="pill p-red">Critical</span><span class="pill p-amb">High</span><span class="pill p-blu">Medium</span><span class="pill p-grn">Cleared</span><span class="pill p-gry">Learning</span></div>
+  <h2 class="sec">Buttons</h2><div class="row gap10"><button class="btn primary">Primary</button><button class="btn">Secondary</button><button class="btn danger">Danger</button><button class="btn ghost">Ghost</button></div>
   <h2 class="sec">Principles</h2><div class="card"><div class="bd small">Flat surfaces, hairline borders · semantic color encodes meaning (clear / flag / reject) · humans own money decisions — destructive actions always carry an approval gate · all AI local · everything auditable with model version.</div></div>`;
 }
 boot();

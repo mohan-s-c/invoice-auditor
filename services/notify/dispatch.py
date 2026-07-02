@@ -92,9 +92,12 @@ def dispatch_notifications(force: bool = False) -> dict:
             "external_email_enabled": settings.allow_external_email}
 
 
-def outbox(region: str | None = None) -> list[dict]:
-    rows = db.query("SELECT * FROM notifications_outbox ORDER BY id DESC")
-    out = [dict(r) for r in rows]
+def outbox(region: str | None = None, limit: int = 200) -> list[dict]:
+    """Most recent notifications, optionally region-scoped. Bounded like the audit trail
+    (``libs.common.audit.trail``) so a large outbox can't force an unbounded read."""
     if region is not None:
-        out = [r for r in out if r["region"] == region]
-    return out
+        rows = db.query("SELECT * FROM notifications_outbox WHERE region=? "
+                        "ORDER BY id DESC LIMIT ?", (region, limit))
+    else:
+        rows = db.query("SELECT * FROM notifications_outbox ORDER BY id DESC LIMIT ?", (limit,))
+    return [dict(r) for r in rows]
